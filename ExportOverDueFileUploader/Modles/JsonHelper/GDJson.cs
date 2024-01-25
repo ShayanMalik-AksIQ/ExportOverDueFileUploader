@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.IdentityModel.Tokens;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,83 +12,17 @@ namespace ExportOverDueFileUploader.Modles.JsonHelper
     {
     }
 
-    public class ConsignorConsigneeInfo
+    
+
+    public class GdPayload
     {
-        public string ntnFtn { get; set; }
-        public string strn { get; set; }
-        public string consigneeName { get; set; }
-        public string consigneeAddress { get; set; }
-        public string consignorName { get; set; }
-        public string consignorAddress { get; set; }
-    }
-
-    public class FinancialInstrument
-    {
-        public string exporterIban { get; set; }
-        public string modeOfPayment { get; set; }
-        public string finInsUniqueNumber { get; set; }
-        public double finInsConsumedValue { get; set; }
-    }
-
-    public class FinancialInformation
-    {
-        public string modeOfPayment { get; set; }//
-        public string finInsUniqueNumber { get; set; }
-        public List<FinancialInstrument> financialInstrument { get; set; }
-        public string currency { get; set; }
-        public long totalDeclaredValue { get; set; }
-
-        public float? exchangeRate { get; set; }
-        
-    }
-
-    public class PackagesInformation
-    {
-        public double numberOfPackages { get; set; }
-        public string packageType { get; set; }
-    }
-
-    public class ContainerVehicleInformation
-    {
-        public string containerOrTruckNumber { get; set; }
-        public string sealNumber { get; set; }
-        public string containerType { get; set; }
-    }
-
-    public class GeneralInformation
-    {
-        public List<PackagesInformation> packagesInformation { get; set; }
-        public List<ContainerVehicleInformation> containerVehicleInformation { get; set; }
-
-        public string destinationCountry { get; set; }
-        public string clearanceDate { get; set; }
-
-        public DateTime? clearanceDateValue
-        {
-            get
-            {
-                if (clearanceDate!=null || clearanceDate != "")
-                {
-
-                    int a = Convert.ToInt16(clearanceDate.Substring(6, 2));
-                    int b = Convert.ToInt16(clearanceDate.Substring(4, 2));
-                    int d = Convert.ToInt16(clearanceDate.Substring(0, 4));
-                    return new DateTime(d, b, a);
-                }
-                else { return null; }
-            }
-        }
-      
-    }
-
-    public class ItemInformation
-    {
-        public string hsCode { get; set; }
-        public double quantity { get; set; }
-        public double unitPrice { get; set; }
-        public double totalValue { get; set; }
-        public double exportValue { get; set; }
-        public string uom { get; set; }
+        public string messageId { get; set; }
+        public string timestamp { get; set; }
+        public string senderId { get; set; }
+        public string receiverId { get; set; }
+        public string processingCode { get; set; }
+        public Data data { get; set; }
+        public string signature { get; set; }
     }
 
     public class Data
@@ -102,7 +37,54 @@ namespace ExportOverDueFileUploader.Modles.JsonHelper
         public FinancialInformation financialInformation { get; set; }
         public GeneralInformation generalInformation { get; set; }
         public FinancialInfo financialInfo { get; set; }
-        public ItemInformation itemInformation { get; set; }
+        public object itemInformation { get; set; }
+    }
+
+    public class ConsignorConsigneeInfo
+    {
+        public string ntnFtn { get; set; }
+        public string strn { get; set; }
+        public string consigneeName { get; set; }
+        public string consigneeAddress { get; set; }
+        public string consignorName { get; set; }
+        public string consignorAddress { get; set; }
+    }
+    public class FinancialInformation
+    {
+        public string modeOfPayment { get; set; }//
+        public string finInsUniqueNumber { get; set; }
+        public List<FinancialInstrument> financialInstrument { get; set; }
+        public string currency { get; set; }
+        public long totalDeclaredValue { get; set; }
+
+        public float? exchangeRate { get; set; }
+        // Add other properties as needed
+    }
+
+    public class GeneralInformation
+    {
+        public List<PackagesInformation> packagesInformation { get; set; }
+        public List<ContainerVehicleInformation> containerVehicleInformation { get; set; }
+
+        public string destinationCountry { get; set; }
+        public string clearanceDate { get; set; }
+
+        public DateTime? clearanceDateValue
+        {
+            get
+            {
+                if (!clearanceDate.IsNullOrEmpty())
+                {
+
+                    int a = Convert.ToInt16(clearanceDate.Substring(6, 2));
+                    int b = Convert.ToInt16(clearanceDate.Substring(4, 2));
+                    int d = Convert.ToInt16(clearanceDate.Substring(0, 4));
+                    return new DateTime(d, b, a);
+                }
+                else { return null; }
+            }
+        }
+        // Add other properties as needed
     }
 
     public class FinancialInfo
@@ -114,17 +96,25 @@ namespace ExportOverDueFileUploader.Modles.JsonHelper
         public double exchangeRate { get; init; }
     }
 
-    public class GdPayload
+    public class FinancialInstrument
     {
-        public string messageId { get; set; }
-        public string timestamp { get; set; }
-        public string senderId { get; set; }
-        public string receiverId { get; set; }
-        public string processingCode { get; set; }
-        public Data data { get; set; }
-        public string signature { get; set; }
+        public string exporterIban { get; set; }
+        public string modeOfPayment { get; set; }
+        public string finInsUniqueNumber { get; set; }
+        public double finInsConsumedValue { get; set; }
+    }
+    public class PackagesInformation
+    {
+        public double numberOfPackages { get; set; }
+        public string packageType { get; set; }
+    }
+
+    public class ContainerVehicleInformation
+    {
+        public string containerOrTruckNumber { get; set; }
+        public string sealNumber { get; set; }
+        public string containerType { get; set; }
     }
 
 
-   
 }

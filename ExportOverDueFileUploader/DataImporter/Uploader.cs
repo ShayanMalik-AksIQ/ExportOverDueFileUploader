@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using ExportOverDueFileUploader.DBmodels;
+using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -11,7 +12,41 @@ namespace ExportOverDueFileUploader.DataImporter
 {
     public class Uploader
     {
+        public void Executeion()
+        {
+            ExportOverDueDbRefactorContext context = new ExportOverDueDbRefactorContext();
 
+            var lstFileTypes=context.FileTypes;//aproved only
+
+            foreach (var fileType in lstFileTypes)
+            {
+                var BasePath = fileType.FilePath;
+
+                var Files = GetFileNamesInFolder(BasePath);
+
+                foreach (var file in Files)
+                {
+
+
+                    var FileJsonData=FileReader.ReadAndValidateExcelFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
+                    ImportData(FileJsonData,fileType.Description);
+
+
+                }
+
+
+
+
+
+
+
+
+            }
+            
+
+
+
+        }
         public string ImportData(string jsondata, string EntityName)
         {
             if (true)//TableNames.Contains(EntityName))
@@ -29,7 +64,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     else if (EntityName == "FinancialInstrument")
                     {
-                     //   AddFIInfoColoums(data);
+                        AddColumns(data, FiImporter.FiColoums);
                     }
 
                     if (data.Columns.Contains("ID"))
@@ -54,7 +89,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                         else if (EntityName == "FinancialInstrument")
                         {
-                            //LoadFIInfoColoums(_row);
+                            FiImporter.LoadFIInfoColoums(_row);
                         }
                     }
                     if (data.Columns.Contains("ID"))
@@ -79,9 +114,9 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             try
             {// get fro df
-                var connectionString = "Server=DESKTOP-O10K6M5; Database=ExportOverDue_dbRefactor; Trusted_Connection=True; TrustServerCertificate=True;Command Timeout=160;";
+                var connectionString = AppSettings.ConnectionString;
 
-                int batchSize = 1000; // Set your desired batch size df
+                int batchSize = 10000; // Set your desired batch size df
                 int totalRows = dt.Rows.Count;
 
                 using (var sqlbulk = new SqlBulkCopy(connectionString))
@@ -113,5 +148,29 @@ namespace ExportOverDueFileUploader.DataImporter
             }
         }
 
+        private  List<string> GetFileNamesInFolder(string folderPath)
+        {
+            try
+            {
+                // Check if the folder exists
+                if (Directory.Exists(folderPath))
+                {
+                    // Get all file names in the folder
+                    return Directory.GetFiles(folderPath)
+                        .Select(Path.GetFileName).Where(x => x.EndsWith(".csv") || x.EndsWith(".xlsx"))
+                        .ToList();
+                }
+                else
+                {
+                    Console.WriteLine($"Folder not found: {folderPath}");
+                    return null; // Return an empty array if the folder doesn't exist
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return null; // Return an empty array in case of an exception
+            }
+        }
     }
 }
