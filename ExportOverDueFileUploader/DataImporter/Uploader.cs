@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,11 +13,22 @@ namespace ExportOverDueFileUploader.DataImporter
 {
     public class Uploader
     {
+        List<string> TableNames = new List<string>();
+        public Uploader()
+        {
+
+            TableNames.Add("FileType");
+            TableNames.Add("GoodsDeclaration");
+            TableNames.Add("FinancialInstrument");
+            TableNames.Add("LetterOfCredit");
+            TableNames.Add("DocumentaryCollection");
+
+        }
         public void Executeion()
         {
             ExportOverDueDbRefactorContext context = new ExportOverDueDbRefactorContext();
 
-            var lstFileTypes=context.FileTypes;//aproved only
+            var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId);//aproved only
 
             foreach (var fileType in lstFileTypes)
             {
@@ -26,30 +38,84 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 foreach (var file in Files)
                 {
+                    FileImportAuditTrail auditTrail = new FileImportAuditTrail();
+                    try
+                    {
 
 
-                    var FileJsonData=FileReader.ReadAndValidateExcelFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
-                    ImportData(FileJsonData,fileType.Description);
+                        string FileJsonData = string.Empty;
+                        if (file.EndsWith(".xlsx"))
+                        {
+                            FileJsonData = FileReader.ReadAndValidateExcelFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
+                        }
+                        else if (file.EndsWith(".csv"))
+                        {
+                            FileJsonData = FileReader.ReadAndValidateCsvFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
+                        }
+                        else
+                        {
+                            Console.WriteLine("File Type Incorect");
+                            continue;
+                        }
+                        try
+                        {
+                            auditTrail.FileName = file;
+                            auditTrail.FileTypeId = fileType.Id;//
+                            if (FileJsonData != null && !FileJsonData.StartsWith("Hadders"))
+                            {
+                                ImportData(FileJsonData, fileType.Description);
+                                auditTrail.Remarks = "Success";
+                                auditTrail.Success = true;
 
+                            }
+                            else
+                            {
+                                auditTrail.Success = false;
+                                auditTrail.Remarks = $"Hadders MissMached";
 
+                            }
+
+                        }
+                        catch (Exception ex)
+                        {
+                            auditTrail.Success = false;
+                            auditTrail.Remarks = $"{ex.Message}";
+
+                        }
+                        finally
+                        {
+
+                            try
+                            {
+                                auditTrail.TenantId = AppSettings.TenantId;
+                                auditTrail.CreationTime = DateTime.Now;
+                                ExportOverDueDbRefactorContext context1 = new ExportOverDueDbRefactorContext();
+                                context1.FileImportAuditTrails.Add(auditTrail);
+                                context1.SaveChanges();
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine(ex.Message);
+                            }
+                        }
+
+                    }
+
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
                 }
 
-
-
-
-
-
-
-
             }
-            
+
 
 
 
         }
         public string ImportData(string jsondata, string EntityName)
         {
-            if (true)//TableNames.Contains(EntityName))
+            if (TableNames.Contains(EntityName))
             {
                 try
                 {
@@ -60,7 +126,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     data.Columns.Add("CreatorUserId");
                     if (EntityName == "GoodsDeclaration")
                     {
-                        AddColumns(data,GdImporter.GdColumns);
+                        AddColumns(data, GdImporter.GdColumns);
                     }
                     else if (EntityName == "FinancialInstrument")
                     {
@@ -71,7 +137,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         data.Columns.Add("I_D");
                     }
-                    int tenantId = 1;//config
+                    int tenantId = AppSettings.TenantId;
                     foreach (DataRow _row in data.Rows)
                     {
                         if (data.Columns.Contains("ID"))
@@ -80,7 +146,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                         _row["CreationTime"] = DateTime.Now;
                         _row["IsDeleted"] = false;
-                        _row["TenantId"] = tenantId;// appsettings
+                        _row["TenantId"] = tenantId;
                         _row["CreatorUserId"] = null;
 
                         if (EntityName == "GoodsDeclaration")
@@ -116,7 +182,7 @@ namespace ExportOverDueFileUploader.DataImporter
             {// get fro df
                 var connectionString = AppSettings.ConnectionString;
 
-                int batchSize = 10000; // Set your desired batch size df
+                int batchSize = AppSettings.BatchSize; // Set your desired batch size df
                 int totalRows = dt.Rows.Count;
 
                 using (var sqlbulk = new SqlBulkCopy(connectionString))
@@ -148,7 +214,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
         }
 
-        private  List<string> GetFileNamesInFolder(string folderPath)
+        private List<string> GetFileNamesInFolder(string folderPath)
         {
             try
             {

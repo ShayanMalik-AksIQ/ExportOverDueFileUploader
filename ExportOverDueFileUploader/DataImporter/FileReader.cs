@@ -1,8 +1,12 @@
 ﻿using ClosedXML.Excel;
+using CsvHelper;
+using CsvHelper.Configuration;
 using ExportOverDueFileUploader.DBmodels;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Formats.Asn1;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -12,8 +16,49 @@ namespace ExportOverDueFileUploader.DataImporter
 {
     public static class FileReader
     {
+        public static string ReadAndValidateCsvFile(string filePath, int HeaderStart, string HeadersToValidate)
+        {
+            string csvFilePath = filePath;
 
-        
+            // Create a configuration for CsvHelper
+            var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture);
+
+            // Read CSV headers
+            using (var reader = new StreamReader(csvFilePath))
+            using (var csv = new CsvReader(reader, csvConfig))
+            {
+                // Read the headers without advancing the reader
+                csv.Read();
+                csv.ReadHeader();
+
+                // Get the headers as an array of strings
+                var headers = csv.HeaderRecord.ToList();
+
+                // Check if the headers match the expected headers
+                if (HeadersToValidate == string.Join(",", headers))
+                {
+                    // Headers match, proceed to read CSV data into a list of dictionaries
+                    List<Dictionary<string, object>> csvData = csv.GetRecords<dynamic>()
+                        .Select(record => ((IDictionary<string, object>)record).ToDictionary(kvp => kvp.Key, kvp => kvp.Value))
+                        .ToList();
+
+                    var settings = new JsonSerializerSettings
+                    {
+                        Formatting = Newtonsoft.Json.Formatting.Indented,
+                        Converters = { new EmptyStringToNullConverter() }
+                    };
+
+                    // Return the JSON representation of the CSV data
+                    return JsonConvert.SerializeObject(csvData, settings);
+                }
+                else
+                {
+                    // Headers do not match, return an error message
+                    return "Hadders MissMached";
+                }
+            }
+        }
+
         public static string ReadAndValidateExcelFile(string filePath, int HadderStart, string HaddersToValidator)
         {
             using (var workbook = new XLWorkbook(filePath))
@@ -21,6 +66,11 @@ namespace ExportOverDueFileUploader.DataImporter
                 var worksheet = workbook.Worksheet(1);
 
                 List<Dictionary<string, object>> excelData = ExcelToDictionaryList(worksheet, HadderStart, HaddersToValidator);
+
+                if (excelData == null)
+                {
+                    return "Hadders MissMached";
+                }
 
                 var settings = new JsonSerializerSettings
                 {
@@ -30,10 +80,8 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 return JsonConvert.SerializeObject(excelData, settings);
 
-               
             }
         }
-
 
 
         private static List<string> GetFileNamesInFolder(string folderPath)
@@ -45,7 +93,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 {
                     // Get all file names in the folder
                     return Directory.GetFiles(folderPath)
-                        .Select(Path.GetFileName).Where(x=>x.EndsWith(".csv") || x.EndsWith(".xlsx"))
+                        .Select(Path.GetFileName).Where(x => x.EndsWith(".csv") || x.EndsWith(".xlsx"))
                         .ToList();
                 }
                 else
@@ -61,10 +109,11 @@ namespace ExportOverDueFileUploader.DataImporter
             }
         }
 
-        static List<Dictionary<string, object>> ExcelToDictionaryList(IXLWorksheet worksheet,int HadderStart,string HaddersToValidator)
+        static List<Dictionary<string, object>> ExcelToDictionaryList(IXLWorksheet worksheet, int HadderStart, string HaddersToValidator)
         {
-            List<string> headerRow=new List<string>();
-            if (String.Join(",", worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString())) == HaddersToValidator) {
+            List<string> headerRow = new List<string>();
+            if (String.Join(",", worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString())) == HaddersToValidator)
+            {
 
                 headerRow = worksheet.Row(HadderStart).Cells().Select(cell => Regex.Replace(cell.Value.ToString(), "[^a-zA-Z0-9_]", "")).ToList();
             }
@@ -79,8 +128,8 @@ namespace ExportOverDueFileUploader.DataImporter
 
             int lastColumn = worksheet.LastColumnUsed() != null ? worksheet.LastColumnUsed().ColumnNumber() : 0;
             int lastRow = worksheet.LastRowUsed() != null ? worksheet.LastRowUsed().RowNumber() : 0;
-         
-            for (int row = HadderStart+1; row <= lastRow; row++)
+
+            for (int row = HadderStart + 1; row <= lastRow; row++)
             {
                 var rowData = new Dictionary<string, object>();
 

@@ -13,6 +13,8 @@ internal class Program
             .AddJsonFile("appsettings.json")
             .Build();
         AppSettings.ConnectionString= configuration.GetConnectionString("DefaultConnection");
+        AppSettings.TenantId= int.Parse(configuration.GetConnectionString("TenantId"));
+        AppSettings.BatchSize= int.Parse(configuration.GetConnectionString("BatchSize"));
 
         Uploader x=new Uploader();
         x.Executeion();

@@ -10,5 +10,7 @@ namespace ExportOverDueFileUploader.DBmodels
     {
         public static string ConnectionString { get; set; } = string.Empty;
         public static int BatchSize { get; set; }
+        public static int TenantId { get; set; }
+
     }
 }
