@@ -26,7 +26,7 @@ namespace ExportOverDueFileUploader.DataImporter
         }
         public void Executeion()
         {
-            ExportOverDueDbRefactorContext context = new ExportOverDueDbRefactorContext();
+            ExportOverDueContext context = new ExportOverDueContext();
 
             var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId);//aproved only
 
@@ -89,7 +89,7 @@ namespace ExportOverDueFileUploader.DataImporter
                             {
                                 auditTrail.TenantId = AppSettings.TenantId;
                                 auditTrail.CreationTime = DateTime.Now;
-                                ExportOverDueDbRefactorContext context1 = new ExportOverDueDbRefactorContext();
+                                ExportOverDueContext context1 = new ExportOverDueContext();
                                 context1.FileImportAuditTrails.Add(auditTrail);
                                 context1.SaveChanges();
                             }
