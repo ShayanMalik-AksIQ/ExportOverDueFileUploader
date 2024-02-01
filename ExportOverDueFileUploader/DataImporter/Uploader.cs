@@ -1,4 +1,5 @@
 ﻿using ExportOverDueFileUploader.DBmodels;
+using ExportOverDueFileUploader.MatuirtyBO;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using System;
@@ -27,13 +28,10 @@ namespace ExportOverDueFileUploader.DataImporter
         public void Executeion()
         {
             ExportOverDueContext context = new ExportOverDueContext();
-
-            var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId);//aproved only
-
+            var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted==false);//aproved only
             foreach (var fileType in lstFileTypes)
             {
                 var BasePath = fileType.FilePath;
-
                 var Files = GetFileNamesInFolder(BasePath);
 
                 foreach (var file in Files)
@@ -41,8 +39,6 @@ namespace ExportOverDueFileUploader.DataImporter
                     FileImportAuditTrail auditTrail = new FileImportAuditTrail();
                     try
                     {
-
-
                         string FileJsonData = string.Empty;
                         if (file.EndsWith(".xlsx"))
                         {
@@ -63,9 +59,19 @@ namespace ExportOverDueFileUploader.DataImporter
                             auditTrail.FileTypeId = fileType.Id;//
                             if (FileJsonData != null && !FileJsonData.StartsWith("Hadders"))
                             {
-                                ImportData(FileJsonData, fileType.Description);
+                                var gdList = ImportData(FileJsonData, fileType.Description);
                                 auditTrail.Remarks = "Success";
                                 auditTrail.Success = true;
+                                if (fileType.Description == "GoodsDeclaration")
+                                {
+
+                                    LinkGdToFI.SyncNewGd(gdList.gds);
+                                }
+                                if (fileType.Description == "FinancialInstrument")
+                                {
+
+                                    LinkGdToFI.SyncNewFi(gdList.gds,gdList.fis);
+                                }
 
                             }
                             else
@@ -113,7 +119,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
 
         }
-        public string ImportData(string jsondata, string EntityName)
+        public NewFiGdFilterModel ImportData(string jsondata, string EntityName)
         {
             if (TableNames.Contains(EntityName))
             {
@@ -131,7 +137,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     else if (EntityName == "FinancialInstrument")
                     {
                         AddColumns(data, FiImporter.FiColoums);
-                    }
+                    }   
 
                     if (data.Columns.Contains("ID"))
                     {
@@ -163,7 +169,20 @@ namespace ExportOverDueFileUploader.DataImporter
                         data.Columns.Remove("ID");
                     }
                     BulkInsert(data, EntityName);
-                    return "data inserted successfully";
+                    NewFiGdFilterModel filter=new NewFiGdFilterModel();
+                    if (EntityName == "GoodsDeclaration")
+                    {
+
+                        var gdNumbers = ExtractGdNumberList(data);
+                        filter = gdNumbers;
+                    }
+                    if (EntityName == "FinancialInstrument")
+                    {
+
+                        var gdNumbers = ExtractFilisterList(data);
+                        filter = gdNumbers;
+                    }
+                    return filter;
                 }
                 catch (Exception ex)
                 {
@@ -176,6 +195,11 @@ namespace ExportOverDueFileUploader.DataImporter
                 throw new Exception("Incorrect table name");
             }
         }
+
+
+
+
+
         public void BulkInsert(DataTable dt, string entityname)
         {
             try
@@ -237,6 +261,45 @@ namespace ExportOverDueFileUploader.DataImporter
                 Console.WriteLine($"Error: {ex.Message}");
                 return null; // Return an empty array in case of an exception
             }
+        }
+
+        private NewFiGdFilterModel ExtractGdNumberList(DataTable dataTable)
+        {
+            List<string> gdNumberList = new List<string>();
+
+            foreach (DataRow row in dataTable.Rows)
+            {
+                // Assuming "id" is the name of the column
+                string id = row["gdNumber"].ToString();
+                gdNumberList.Add(id);
+            }
+
+            return new NewFiGdFilterModel
+            {
+                gds = gdNumberList
+            };
+        }
+
+        private NewFiGdFilterModel ExtractFilisterList(DataTable dataTable)
+        {
+            List<string> gdNumberList = new List<string>();
+            List<string> fis = new List<string>();
+
+            foreach (DataRow row in dataTable.Rows)
+            {
+                string gd = row["openAccountGdNumber"].ToString();
+                string fi = row["finInsUniqueNumber"].ToString();
+
+                gdNumberList.Add(gd);
+                fis.Add(fi);
+            }
+
+            return new NewFiGdFilterModel
+            {
+                gds = gdNumberList,
+                fis = fis
+
+            };
         }
     }
 }
