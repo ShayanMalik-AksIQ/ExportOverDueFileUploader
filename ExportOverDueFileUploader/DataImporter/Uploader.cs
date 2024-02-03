@@ -15,6 +15,7 @@ namespace ExportOverDueFileUploader.DataImporter
     public class Uploader
     {
         List<string> TableNames = new List<string>();
+        public DateTime DateTimeNow= new DateTime();
         public Uploader()
         {
 
@@ -59,18 +60,19 @@ namespace ExportOverDueFileUploader.DataImporter
                             auditTrail.FileTypeId = fileType.Id;//
                             if (FileJsonData != null && !FileJsonData.StartsWith("Hadders"))
                             {
+                                DateTimeNow= DateTime.Now;
                                 var gdList = ImportData(FileJsonData, fileType.Description);
                                 auditTrail.Remarks = "Success";
                                 auditTrail.Success = true;
                                 if (fileType.Description == "GoodsDeclaration")
                                 {
 
-                                    LinkGdToFI.SyncNewGd(gdList.gds);
+                                    LinkGdToFI.SyncNewGd(DateTimeNow,gdList.fis);
                                 }
                                 if (fileType.Description == "FinancialInstrument")
                                 {
 
-                                    LinkGdToFI.SyncNewFi(gdList.gds,gdList.fis);
+                                 //   LinkGdToFI.SyncNewFi(DateTimeNow);
                                 }
 
                             }
@@ -94,7 +96,7 @@ namespace ExportOverDueFileUploader.DataImporter
                             try
                             {
                                 auditTrail.TenantId = AppSettings.TenantId;
-                                auditTrail.CreationTime = DateTime.Now;
+                                auditTrail.CreationTime = DateTimeNow;
                                 ExportOverDueContext context1 = new ExportOverDueContext();
                                 context1.FileImportAuditTrails.Add(auditTrail);
                                 context1.SaveChanges();
@@ -125,6 +127,7 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 try
                 {
+                    List<string> newGdFis = new List<string>();
                     DataTable data = JsonConvert.DeserializeObject<DataTable>(jsondata.ToString());
                     data.Columns.Add("CreationTime");
                     data.Columns.Add("IsDeleted");
@@ -150,14 +153,19 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             _row["I_D"] = _row["ID"];
                         }
-                        _row["CreationTime"] = DateTime.Now;
+                        _row["CreationTime"] = DateTimeNow;
                         _row["IsDeleted"] = false;
                         _row["TenantId"] = tenantId;
                         _row["CreatorUserId"] = null;
-
+                      
                         if (EntityName == "GoodsDeclaration")
                         {
-                            GdImporter.LoadGdInfoColoums(_row);
+                            var fis = GdImporter.LoadGdInfoColoums(_row);
+                            if (fis!= null)
+                            {
+                                newGdFis.AddRange(fis);
+                            }
+                            
                         }
                         else if (EntityName == "FinancialInstrument")
                         {
@@ -173,8 +181,8 @@ namespace ExportOverDueFileUploader.DataImporter
                     if (EntityName == "GoodsDeclaration")
                     {
 
-                        var gdNumbers = ExtractGdNumberList(data);
-                        filter = gdNumbers;
+                       // var gdNumbers = ExtractGdNumberList(data);
+                        filter .fis= newGdFis;
                     }
                     if (EntityName == "FinancialInstrument")
                     {
@@ -271,6 +279,7 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 // Assuming "id" is the name of the column
                 string id = row["gdNumber"].ToString();
+
                 gdNumberList.Add(id);
             }
 

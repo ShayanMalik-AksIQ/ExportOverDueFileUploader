@@ -167,13 +167,18 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
 
 
-        public static string SyncNewGd(List<string> newGds)
+        public static string SyncNewGd(DateTime dateTime, List<string> fis )
         {
             ExportOverDueContext context = new ExportOverDueContext();
             int y = 0;
-            List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(AppSettings.TenantId,newGds).ToList();
+            List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(AppSettings.TenantId,dateTime).ToList();
+
+            if (lstgds.Count == 0)
+            {
+                return "No Gds";
+            }
             List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
-            var FiDatas = CustomRepo.GetFinancialInstrumentForV20Dates(AppSettings.TenantId).ToList();
+            var FiDatas = CustomRepo.GetFinancialInstrumentForV20Dates(AppSettings.TenantId,fis).ToList();
             foreach (var gd in lstgds)
             {
                 List<GD_FI_Link> GdV20Dates = new List<GD_FI_Link>();
@@ -287,12 +292,12 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                         }
                         else
                         {
-                            GdV20Dates.Add(new GD_FI_Link()
-                            {
-                                GdId = gd.Id,
-                                //    GDNumber = gd.gdNumber,
-                                //    FINumber = item.FiNumber + " - Not in FI File"
-                            });
+                            //GdV20Dates.Add(new GD_FI_Link()
+                            //{
+                            //    GdId = gd.Id,
+                            //    //    GDNumber = gd.gdNumber,
+                            //    //    FINumber = item.FiNumber + " - Not in FI File"
+                            //});
                         }
                     }
                 }
@@ -320,13 +325,14 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         }
 
 
-        public static string SyncNewFi(List<string> newFisGd, List<string> newFis)
+        public static string SyncNewFi(DateTime dateTime)
         {
             ExportOverDueContext context = new ExportOverDueContext();
             int y = 0;
-            List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(AppSettings.TenantId, newFisGd, newFis).ToList();
+            List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(AppSettings.TenantId, null, null,dateTime).ToList();
+           
             List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
-            var FiDatas = CustomRepo.GetFinancialInstrumentForV20Dates(AppSettings.TenantId, newFis).ToList();
+            var FiDatas = CustomRepo.GetFinancialInstrumentForV20Dates(AppSettings.TenantId).ToList();
             foreach (var gd in lstgds)
             {
                 List<GD_FI_Link> GdV20Dates = new List<GD_FI_Link>();

@@ -97,18 +97,14 @@ namespace ExportOverDueFileUploader.DBHelper
             }
         }
 
-        public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(long TenantId,List<string> GdNumbers)
+        public static List<GoodsDeclaration> GetNewGoodsDeclarationForV20Dates(long TenantId ,DateTime CreationDate)
         {
             try
             {
                 var context = new ExportOverDueContext();
-               
-
                 var result = new List<GoodsDeclaration>();
-
-              
-                    var batchResult = context.GoodsDeclarations
-                        .Where(g => g.TenantId == TenantId && EF.Functions.Like(g.MESSAGE, "%Received%") && g.IsDeleted == false && GdNumbers.Contains(g.gdNumber))
+                var batchResult = context.GoodsDeclarations
+                        .Where(g => g.TenantId == TenantId && EF.Functions.Like(g.MESSAGE, "%Received%") && g.IsDeleted == false && EF.Functions.DateDiffSecond(g.CreationTime, CreationDate) == 0)
                         .Select(g => new 
                         {
                             g.GDDate,
@@ -124,7 +120,11 @@ namespace ExportOverDueFileUploader.DBHelper
                             g.OutstandingAmount
                         })
                         .ToList();
-                    List<GoodsDeclaration> x = batchResult.Select(g => new GoodsDeclaration
+
+                
+
+
+                List<GoodsDeclaration> x = batchResult.Select(g => new GoodsDeclaration
                     {
                         Id = g.Id,
                         IsDeleted = g.IsDeleted,
@@ -155,13 +155,13 @@ namespace ExportOverDueFileUploader.DBHelper
             }
         }
 
-        public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(long TenantId, List<string> GdNumbers,List<string> lstfis)
+        public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(long TenantId, List<string> GdNumbers,List<string> lstfis, DateTime CreationDate)
         {
             try
             {
                 var context = new ExportOverDueContext();
 
-                var lstResult = context.GoodsDeclarations.Where(x=>x.TenantId==TenantId && x.MESSAGE.Contains("Received") && x.IsDeleted==false && lstfis.Any(s=>x.LstfinInsUniqueNumbers.Contains(s)) )
+                var lstResult = context.GoodsDeclarations.Where(x=>x.TenantId==TenantId && x.MESSAGE.Contains("Received") && x.IsDeleted==false && x.CreationTime==CreationDate )
                                                          .Select(g => new
                                                          {
                                                              g.GDDate,
@@ -256,8 +256,8 @@ namespace ExportOverDueFileUploader.DBHelper
             try
             {
                 var context = new ExportOverDueContext();
-                var lstResult = context.FinancialInstruments
-                                                            .FromSqlRaw($"SELECT [Id], IsDeleted, [TenantId], [TRANSACTION_TYPE], [contractCollectionData], [finInsUniqueNumber], [lcData], [modeOfPayment], [openAccountGdNumber], [paymentInformation] FROM [dbo].[FinancialInstrument] WHERE TenantId = {TenantId} AND TRANSACTION_TYPE LIKE '1524' AND IsDeleted=0 And finInsUniqueNumber in ({string.Join(",", fis.Select(s => $"'{s}'"))})")
+                var lstResult = context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE== "1524" && g.IsDeleted == false && fis.Contains(g.finInsUniqueNumber) )
+                                                            //.FromSqlRaw($"SELECT [Id], IsDeleted, [TenantId], [TRANSACTION_TYPE], [contractCollectionData], [finInsUniqueNumber], [lcData], [modeOfPayment], [openAccountGdNumber], [paymentInformation] FROM [dbo].[FinancialInstrument] WHERE TenantId = {TenantId} AND TRANSACTION_TYPE LIKE '1524' AND IsDeleted=0 And finInsUniqueNumber in ({string.Join(",", fis.Select(s => $"'{s}'"))})")
                                                             .Select(f => new
                                                             {
                                                                 f.Id,

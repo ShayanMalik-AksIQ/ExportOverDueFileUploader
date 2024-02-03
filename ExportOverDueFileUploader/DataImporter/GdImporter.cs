@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -29,10 +30,11 @@ namespace ExportOverDueFileUploader.DataImporter
             "modeOfPayment"
         };
 
-        public static void LoadGdInfoColoums(DataRow _row)
+        public static List<string> LoadGdInfoColoums(DataRow _row)
         {
             try
             {
+                List<string> fiNumber = new List<string>();
                 GdPayload payload = JsonConvert.DeserializeObject<GdPayload>(_row["PAYLOAD"]?.ToString());
                 List<string> lstFiNumber = new List<string>();
                 List<string> lstModeOfPayment = new List<string>();
@@ -41,6 +43,11 @@ namespace ExportOverDueFileUploader.DataImporter
                 {
                     foreach (var financialInstrument in payload?.data?.financialInformation?.financialInstrument)
                     {
+                        if (financialInstrument.finInsUniqueNumber!=null)
+                        {
+
+                            fiNumber.Add(financialInstrument.finInsUniqueNumber?.ToString());
+                        }
                         lstFiNumber.Add($"{financialInstrument.finInsUniqueNumber?.ToString()}({financialInstrument.modeOfPayment?.ToString()})");
                     }
                     _row["totalDeclaredValue"] = payload?.data?.financialInformation?.totalDeclaredValue;
@@ -51,8 +58,6 @@ namespace ExportOverDueFileUploader.DataImporter
                 }
                 else if (payload?.data?.financialInfo != null)
                 {
-
-
                     _row["finInsUniqueNumber"] = payload?.data?.financialInfo?.finInsUniqueNumber;
                     _row["modeOfPayment"] = payload?.data?.financialInfo?.modeOfPayment;
                     _row["totalDeclaredValue"] = payload?.data?.financialInfo?.totalDeclaredValue;
@@ -75,10 +80,12 @@ namespace ExportOverDueFileUploader.DataImporter
                     var lstgddate = payload?.data?.gdNumber?.ToString().Split('-').ToList().Skip(3).Take(3).ToList();
                     _row["GDDate"] = new DateTime(Convert.ToInt16(lstgddate[2]), Convert.ToInt16(lstgddate[1]), Convert.ToInt16(lstgddate[0]));
                 }
+
+                return fiNumber;
             }
-            catch
+            catch(Exception ex)
             {
-                return;
+                return null;
             }
 
         }
