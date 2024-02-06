@@ -1,6 +1,9 @@
-﻿using ExportOverDueFileUploader.DBmodels;
+﻿using DocumentFormat.OpenXml.Office2010.Excel;
+using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.MatuirtyBO;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -8,6 +11,7 @@ using System.Data;
 using System.Linq;
 using System.Security.Authentication;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ExportOverDueFileUploader.DataImporter
@@ -16,9 +20,10 @@ namespace ExportOverDueFileUploader.DataImporter
     {
         List<string> TableNames = new List<string>();
         public DateTime DateTimeNow= new DateTime();
+        private readonly ILogger _logger;
         public Uploader()
         {
-
+            //_logger = new Logger<>();
             TableNames.Add("FileType");
             TableNames.Add("GoodsDeclaration");
             TableNames.Add("FinancialInstrument");
@@ -28,10 +33,17 @@ namespace ExportOverDueFileUploader.DataImporter
         }
         public void Executeion()
         {
+            Console.WriteLine("Export Over Due Uploader Execution Begins......");
             ExportOverDueContext context = new ExportOverDueContext();
             var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted==false);//aproved only
+            if (lstFileTypes.IsNullOrEmpty())
+            {
+                Console.WriteLine("Error:No File Type In DB..");
+                return;
+            }
             foreach (var fileType in lstFileTypes)
             {
+                Console.WriteLine($"File:{fileType.Name} Folder:{fileType.FilePath} Uploader Begins.....");
                 var BasePath = fileType.FilePath;
                 var Files = GetFileNamesInFolder(BasePath);
 
@@ -56,30 +68,35 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                         try
                         {
+
                             auditTrail.FileName = file;
                             auditTrail.FileTypeId = fileType.Id;//
-                            if (FileJsonData != null && !FileJsonData.StartsWith("Hadders"))
+                            if (FileJsonData != null && !FileJsonData.StartsWith("Error"))
                             {
-                                DateTimeNow= DateTime.Now;
-                                var gdList = ImportData(FileJsonData, fileType.Description);
+                                Console.WriteLine($"{fileType.Name} file:{file} Reading Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
+                                DateTimeNow = DateTime.Now;
+                                var filters = ImportData(FileJsonData, fileType.Description);
+                                Console.WriteLine($"{fileType.Name} file:{file} Db Export Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
                                 auditTrail.Remarks = "Success";
                                 auditTrail.Success = true;
                                 if (fileType.Description == "GoodsDeclaration")
                                 {
 
-                                    LinkGdToFI.SyncNewGd(DateTimeNow,gdList.fis);
+                                    LinkGdToFI.SyncNewGd(DateTimeNow, filters.fis);
                                 }
                                 if (fileType.Description == "FinancialInstrument")
                                 {
 
                                  //   LinkGdToFI.SyncNewFi(DateTimeNow);
                                 }
+                                Console.WriteLine($"{fileType.Name} file:{file} Sync Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
 
                             }
                             else
                             {
                                 auditTrail.Success = false;
-                                auditTrail.Remarks = $"Hadders MissMached";
+                                auditTrail.Remarks = $"{FileJsonData}";
+                                Console.WriteLine($"{fileType.Name} file:{file} Hadders MissMached {Files.IndexOf(file) + 1}/{Files.Count}");
 
                             }
 
@@ -88,7 +105,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             auditTrail.Success = false;
                             auditTrail.Remarks = $"{ex.Message}";
-
+                            Console.WriteLine($"Error :{ex.Message} on  {fileType.Name} file:{file} - {Files.IndexOf(file) + 1}/{Files.Count}");
                         }
                         finally
                         {
@@ -100,10 +117,12 @@ namespace ExportOverDueFileUploader.DataImporter
                                 ExportOverDueContext context1 = new ExportOverDueContext();
                                 context1.FileImportAuditTrails.Add(auditTrail);
                                 context1.SaveChanges();
+                                Console.WriteLine($"{fileType.Name} file:{file} {Files.IndexOf(file) + 1}/{Files.Count}  Uploaded Sucess With Audit");
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine(ex.Message);
+                                Console.WriteLine($"Error :{ex.Message} {fileType.Name} file:{file} {Files.IndexOf(file) + 1}/{Files.Count}  Uploaded Failed ");
+                               
                             }
                         }
 
@@ -116,10 +135,6 @@ namespace ExportOverDueFileUploader.DataImporter
                 }
 
             }
-
-
-
-
         }
         public NewFiGdFilterModel ImportData(string jsondata, string EntityName)
         {
@@ -180,13 +195,10 @@ namespace ExportOverDueFileUploader.DataImporter
                     NewFiGdFilterModel filter=new NewFiGdFilterModel();
                     if (EntityName == "GoodsDeclaration")
                     {
-
-                       // var gdNumbers = ExtractGdNumberList(data);
-                        filter .fis= newGdFis;
+                        filter.fis = ExtractFiNumberFromNewGDs(data).fis;  
                     }
                     if (EntityName == "FinancialInstrument")
                     {
-
                         var gdNumbers = ExtractFilisterList(data);
                         filter = gdNumbers;
                     }
@@ -195,12 +207,14 @@ namespace ExportOverDueFileUploader.DataImporter
                 catch (Exception ex)
                 {
 
-                    throw ex;
+                    Console.WriteLine($"Error In Import Data:{ex.Message}");
+                    return null; 
                 }
             }
             else
             {
-                throw new Exception("Incorrect table name");
+                Console.WriteLine($"Incorrect Table Name ");
+                return null;
             }
         }
 
@@ -271,21 +285,28 @@ namespace ExportOverDueFileUploader.DataImporter
             }
         }
 
-        private NewFiGdFilterModel ExtractGdNumberList(DataTable dataTable)
+        private NewFiGdFilterModel ExtractFiNumberFromNewGDs(DataTable dataTable)
         {
-            List<string> gdNumberList = new List<string>();
-
+            List<string> fiNumberList = new List<string>();
+           
             foreach (DataRow row in dataTable.Rows)
             {
-                // Assuming "id" is the name of the column
-                string id = row["gdNumber"].ToString();
-
-                gdNumberList.Add(id);
+                
+                string LstfinInsUniqueNumbers = row["LstfinInsUniqueNumbers"].ToString();
+                List<FiNumberAndMode> fiNumberAndModes = new List<FiNumberAndMode>();
+                if (LstfinInsUniqueNumbers != null && LstfinInsUniqueNumbers !="" && !LstfinInsUniqueNumbers.StartsWith("("))
+                {
+                    foreach (var fi in LstfinInsUniqueNumbers.Split(","))
+                    {
+                        fiNumberList.Add(Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value);
+                    }
+                }
+               
             }
 
             return new NewFiGdFilterModel
             {
-                gds = gdNumberList
+                fis = fiNumberList
             };
         }
 
@@ -310,5 +331,10 @@ namespace ExportOverDueFileUploader.DataImporter
 
             };
         }
+
+        
+                                           
     }
+
+   
 }

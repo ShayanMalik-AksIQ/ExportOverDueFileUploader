@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.Office2010.CustomUI;
+﻿using DocumentFormat.OpenXml.InkML;
+using DocumentFormat.OpenXml.Office2010.CustomUI;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ExportOverDueFileUploader.DBmodels;
 using Microsoft.EntityFrameworkCore;
@@ -96,15 +97,17 @@ namespace ExportOverDueFileUploader.DBHelper
                 return null;
             }
         }
-
-        public static List<GoodsDeclaration> GetNewGoodsDeclarationForV20Dates(long TenantId ,DateTime CreationDate)
+        #region GD_FI_Link
+        #region Sync newGD
+        public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(long TenantId ,DateTime CreationDate)
         {
             try
             {
                 var context = new ExportOverDueContext();
                 var result = new List<GoodsDeclaration>();
-                var batchResult = context.GoodsDeclarations
-                        .Where(g => g.TenantId == TenantId && EF.Functions.Like(g.MESSAGE, "%Received%") && g.IsDeleted == false && EF.Functions.DateDiffSecond(g.CreationTime, CreationDate) == 0)
+                var rawResult = context.GoodsDeclarations
+                        .Where(g => g.TenantId == TenantId && EF.Functions.Like(g.MESSAGE, "%Received%") && g.IsDeleted == false
+                               && EF.Functions.DateDiffSecond(g.CreationTime, CreationDate) == 0)
                         .Select(g => new 
                         {
                             g.GDDate,
@@ -120,11 +123,7 @@ namespace ExportOverDueFileUploader.DBHelper
                             g.OutstandingAmount
                         })
                         .ToList();
-
-                
-
-
-                List<GoodsDeclaration> x = batchResult.Select(g => new GoodsDeclaration
+                result = rawResult.Select(g => new GoodsDeclaration
                     {
                         Id = g.Id,
                         IsDeleted = g.IsDeleted,
@@ -140,12 +139,6 @@ namespace ExportOverDueFileUploader.DBHelper
                         GDDate = g.GDDate,
 
                     }).ToList();
-
-                    result.AddRange(x);
-              
-
-              
-
                 return result;
             }
             catch (Exception ex)
@@ -155,6 +148,156 @@ namespace ExportOverDueFileUploader.DBHelper
             }
         }
 
+        public static List<FinancialInstrument> GetFinancialInstrumentForV20Dates(long TenantId, List<string> fis)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+               // var ids= context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE == "1524" && g.IsDeleted == false)
+
+
+                var rawResult = context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE == "1524" && g.IsDeleted == false && fis.Contains(g.finInsUniqueNumber))
+                                                            .Select(f => new
+                                                            {
+                                                                f.Id,
+                                                                f.IsDeleted,
+                                                                TenantId = f.TenantId,
+                                                                f.TRANSACTION_TYPE,
+                                                                f.contractCollectionData,
+                                                                f.finInsUniqueNumber,
+                                                                f.lcData,
+                                                                f.modeOfPayment,
+                                                                f.openAccountGdNumber,
+                                                                f.paymentInformation
+                                                            })
+                                                            .ToList();
+
+                List<FinancialInstrument> result = rawResult.Select(f => new FinancialInstrument
+                {
+                    Id = f.Id,
+                    IsDeleted = f.IsDeleted,
+                    TenantId = f.TenantId,
+                    TRANSACTION_TYPE = f.TRANSACTION_TYPE,
+                    contractCollectionData = f.contractCollectionData,
+                    finInsUniqueNumber = f.finInsUniqueNumber,
+                    lcData = f.lcData,
+                    modeOfPayment = f.modeOfPayment,
+                    openAccountGdNumber = f.openAccountGdNumber,
+                    paymentInformation = f.paymentInformation
+                }).ToList();
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error Fetching FinancialInstrument Data", ex.Message);
+                return null;
+            }
+        }
+        #endregion  Sync newGD
+
+        #region Sync newFi
+        public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(long TenantId, List<string> gds)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                var result = new List<GoodsDeclaration>();
+
+    //            var results = context.GoodsDeclarations
+    //.SelectMany(g => g.LstfinInsUniqueNumbers.Split(',').Select(s => new { g.Id, LstfinInsUniqueNumbers = s.Split('(')[0].Trim() }))
+    //.ToList();
+
+                //var rawResult = context.GoodsDeclarations
+                //        .Where(g => g.TenantId == TenantId && EF.Functions.Like(g.MESSAGE, "%Received%") && g.IsDeleted == false
+                //               && EF.Functions.DateDiffSecond(g.CreationTime, CreationDate) == 0)
+                //        .Select(g => new
+                //        {
+                //            g.GDDate,
+                //            g.Id,
+                //            g.IsDeleted,
+                //            TenantId = g.TenantId,
+                //            g.LstfinInsUniqueNumbers,
+                //            g.blDate,
+                //            g.gdNumber,
+                //            g.totalDeclaredValue,
+                //            g.MatruityDate,
+                //            g.V20Felids,
+                //            g.OutstandingAmount
+                //        })
+                //        .ToList();
+               // result = rawResult.Select(g => new GoodsDeclaration
+                //{
+                //    Id = g.Id,
+                //    IsDeleted = g.IsDeleted,
+                //    TenantId = g.TenantId,
+                //    LstfinInsUniqueNumbers = g.LstfinInsUniqueNumbers,
+
+                //    blDate = g.blDate,
+                //    gdNumber = g.gdNumber,
+                //    totalDeclaredValue = g.totalDeclaredValue,
+                //    MatruityDate = g.MatruityDate,
+                //    V20Felids = g.V20Felids,
+                //    OutstandingAmount = g.OutstandingAmount,
+                //    GDDate = g.GDDate,
+
+                //}).ToList();
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error Fetching GoodsDeclaration  Data", ex.Message);
+                return null;
+            }
+        }
+
+        public static List<FinancialInstrument> GetFinancialInstrumentForV20Dates(long TenantId, DateTime CreationDate)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                var rawResult = context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE == "1524" && g.IsDeleted == false && EF.Functions.DateDiffSecond(g.CreationTime, CreationDate) == 0)
+                                                            .Select(f => new
+                                                            {
+                                                                f.Id,
+                                                                f.IsDeleted,
+                                                                TenantId = f.TenantId,
+                                                                f.TRANSACTION_TYPE,
+                                                                f.contractCollectionData,
+                                                                f.finInsUniqueNumber,
+                                                                f.lcData,
+                                                                f.modeOfPayment,
+                                                                f.openAccountGdNumber,
+                                                                f.paymentInformation
+                                                            })
+                                                            .ToList();
+
+                List<FinancialInstrument> result = rawResult.Select(f => new FinancialInstrument
+                {
+                    Id = f.Id,
+                    IsDeleted = f.IsDeleted,
+                    TenantId = f.TenantId,
+                    TRANSACTION_TYPE = f.TRANSACTION_TYPE,
+                    contractCollectionData = f.contractCollectionData,
+                    finInsUniqueNumber = f.finInsUniqueNumber,
+                    lcData = f.lcData,
+                    modeOfPayment = f.modeOfPayment,
+                    openAccountGdNumber = f.openAccountGdNumber,
+                    paymentInformation = f.paymentInformation
+                }).ToList();
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error Fetching FinancialInstrument Data", ex.Message);
+                return null;
+            }
+        }
+        #endregion  Sync newFI
+
+
+        #endregion  GD_FI_Link
         public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(long TenantId, List<string> GdNumbers,List<string> lstfis, DateTime CreationDate)
         {
             try
@@ -251,51 +394,7 @@ namespace ExportOverDueFileUploader.DBHelper
             }
         }
 
-        public static List<FinancialInstrument> GetFinancialInstrumentForV20Dates(long TenantId,List<string> fis)
-        {
-            try
-            {
-                var context = new ExportOverDueContext();
-                var lstResult = context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE== "1524" && g.IsDeleted == false && fis.Contains(g.finInsUniqueNumber) )
-                                                            //.FromSqlRaw($"SELECT [Id], IsDeleted, [TenantId], [TRANSACTION_TYPE], [contractCollectionData], [finInsUniqueNumber], [lcData], [modeOfPayment], [openAccountGdNumber], [paymentInformation] FROM [dbo].[FinancialInstrument] WHERE TenantId = {TenantId} AND TRANSACTION_TYPE LIKE '1524' AND IsDeleted=0 And finInsUniqueNumber in ({string.Join(",", fis.Select(s => $"'{s}'"))})")
-                                                            .Select(f => new
-                                                            {
-                                                                f.Id,
-                                                                f.IsDeleted,
-                                                                TenantId = f.TenantId,
-                                                                f.TRANSACTION_TYPE,
-                                                                f.contractCollectionData,
-                                                                f.finInsUniqueNumber,
-                                                                f.lcData,
-                                                                f.modeOfPayment,
-                                                                f.openAccountGdNumber,
-                                                                f.paymentInformation
-                                                            })
-                                                            .ToList();
-
-                List<FinancialInstrument> x = lstResult.Select(f => new FinancialInstrument
-                {
-                    Id = f.Id,
-                    IsDeleted = f.IsDeleted,
-                    TenantId = f.TenantId,
-                    TRANSACTION_TYPE = f.TRANSACTION_TYPE,
-                    contractCollectionData = f.contractCollectionData,
-                    finInsUniqueNumber = f.finInsUniqueNumber,
-                    lcData = f.lcData,
-                    modeOfPayment = f.modeOfPayment,
-                    openAccountGdNumber = f.openAccountGdNumber,
-                    paymentInformation = f.paymentInformation
-                }).ToList();
-
-                return x;
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error Fetching FinancialInstrument Data", ex.Message);
-                return null;
-            }
-        }
+       
 
 
         

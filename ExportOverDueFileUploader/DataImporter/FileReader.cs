@@ -61,26 +61,37 @@ namespace ExportOverDueFileUploader.DataImporter
 
         public static string ReadAndValidateExcelFile(string filePath, int HadderStart, string HaddersToValidator)
         {
-            using (var workbook = new XLWorkbook(filePath))
+            try
             {
-                var worksheet = workbook.Worksheet(1);
 
-                List<Dictionary<string, object>> excelData = ExcelToDictionaryList(worksheet, HadderStart, HaddersToValidator);
 
-                if (excelData == null)
+                using (var workbook = new XLWorkbook(filePath))
                 {
-                    return "Hadders MissMached";
+                    var worksheet = workbook.Worksheet(1);
+
+                    List<Dictionary<string, object>> excelData = ExcelToDictionaryList(worksheet, HadderStart, HaddersToValidator);
+
+                    if (excelData == null)
+                    {
+                        return "Error: Excel To Dictionary";
+                    }
+
+                    var settings = new JsonSerializerSettings
+                    {
+                        Formatting = Newtonsoft.Json.Formatting.Indented,
+                        Converters = { new EmptyStringToNullConverter() }
+                    };
+
+                    return JsonConvert.SerializeObject(excelData, settings);
                 }
 
-                var settings = new JsonSerializerSettings
-                {
-                    Formatting = Newtonsoft.Json.Formatting.Indented,
-                    Converters = { new EmptyStringToNullConverter() }
-                };
-
-                return JsonConvert.SerializeObject(excelData, settings);
-
             }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"Error :{ex.Message}");
+                return $"Error :{ex.Message}";
+            }
+        
         }
 
 
@@ -111,43 +122,48 @@ namespace ExportOverDueFileUploader.DataImporter
 
         static List<Dictionary<string, object>> ExcelToDictionaryList(IXLWorksheet worksheet, int HadderStart, string HaddersToValidator)
         {
-            List<string> headerRow = new List<string>();
-            if (String.Join(",", worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString())) == HaddersToValidator)
+            try
             {
-
-                headerRow = worksheet.Row(HadderStart).Cells().Select(cell => Regex.Replace(cell.Value.ToString(), "[^a-zA-Z0-9_]", "")).ToList();
-            }
-            else
-            {
-                Console.WriteLine("Hadders MissMached");
-                return null;
-            }
-
-
-            var excelData = new List<Dictionary<string, object>>();
-
-            int lastColumn = worksheet.LastColumnUsed() != null ? worksheet.LastColumnUsed().ColumnNumber() : 0;
-            int lastRow = worksheet.LastRowUsed() != null ? worksheet.LastRowUsed().RowNumber() : 0;
-
-            for (int row = HadderStart + 1; row <= lastRow; row++)
-            {
-                var rowData = new Dictionary<string, object>();
-
-                for (int col = 1; col <= lastColumn; col++)
+                List<string> headerRow = new List<string>();
+                if (String.Join(",", worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString())) == HaddersToValidator)
                 {
-                    var headerIndex = col - 1;
+                    headerRow = worksheet.Row(HadderStart).Cells().Select(cell => Regex.Replace(cell.Value.ToString(), "[^a-zA-Z0-9_]", "")).ToList();
+                }
+                else
+                {
+                    Console.WriteLine("Hadders MissMached");
+                    return null;
+                }
+                var excelData = new List<Dictionary<string, object>>();
 
-                    if (headerIndex < headerRow.Count)
+                int lastColumn = worksheet.LastColumnUsed() != null ? worksheet.LastColumnUsed().ColumnNumber() : 0;
+                int lastRow = worksheet.LastRowUsed() != null ? worksheet.LastRowUsed().RowNumber() : 0;
+
+                for (int row = HadderStart + 1; row <= lastRow; row++)
+                {
+                    var rowData = new Dictionary<string, object>();
+
+                    for (int col = 1; col <= lastColumn; col++)
                     {
-                        var cellValue = worksheet.Cell(row, col).Value;
-                        rowData[headerRow[headerIndex]] = cellValue.GetText != null ? cellValue.ToString() : null;
+                        var headerIndex = col - 1;
+
+                        if (headerIndex < headerRow.Count)
+                        {
+                            var cellValue = worksheet.Cell(row, col).Value;
+                            rowData[headerRow[headerIndex]] = cellValue.GetText != null ? cellValue.ToString() : null;
+                        }
                     }
+
+                    excelData.Add(rowData);
                 }
 
-                excelData.Add(rowData);
+                return excelData;
             }
-
-            return excelData;
+            catch(Exception ex)
+            {
+                Console.WriteLine($"Error :{ex.Message}");
+                throw;
+            }
         }
 
         public class EmptyStringToNullConverter : JsonConverter
