@@ -16,6 +16,7 @@ namespace ExportOverDueFileUploader.DataImporter
         public static List<string> GdColumns = new List<string>
         {
             "gdNumber",
+            "gdStatus",
             "blDate",
             "totalDeclaredValue",
             "LstfinInsUniqueNumbers",
@@ -66,6 +67,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 }
 
                 _row["gdNumber"] = payload?.data?.gdNumber?.ToString();
+                _row["gdStatus"] = payload?.data?.gdStatus?.ToString();
                 _row["consigneeName"] = payload?.data?.consignorConsigneeInfo?.consigneeName.ToString();
                 _row["LstfinInsUniqueNumbers"] = lstFiNumber.Count > 0 ? string.Join(",", lstFiNumber) : null;
                 _row["blDate"] = payload?.data?.blAwbDate?.ToString();

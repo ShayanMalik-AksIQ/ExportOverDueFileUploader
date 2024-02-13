@@ -89,21 +89,22 @@ public partial class FinancialInstrument
 
     public virtual ICollection<GD_FI_Link> GD_FI_Links { get; set; } = new List<GD_FI_Link>();
 
-    [NotMapped]
-    public DateTime? FiCertifcationdate
-    {
-        get
-        {
-            if (!finInsUniqueNumber.IsNullOrEmpty())
-            {
+    public DateTime? FiCertifcationdate { get; set; }
+   //[NotMapped]
+   // public DateTime? FiCertifcationdate
+   // {
+   //     get
+   //     {
+   //         if (!finInsUniqueNumber.IsNullOrEmpty())
+   //         {
 
-                string ctdate = finInsUniqueNumber.Split('-').ToList().LastOrDefault();
-                int a = Convert.ToInt16(ctdate.Substring(0, 2));
-                int b = Convert.ToInt16(ctdate.Substring(2, 2));
-                int d = Convert.ToInt16(ctdate.Substring(4, 4));
-                return new DateTime(d, b, a);
-            }
-            else { return null; }
-        }
-    }
+   //             string ctdate = finInsUniqueNumber.Split('-').ToList().LastOrDefault();
+   //             int a = Convert.ToInt16(ctdate.Substring(0, 2));
+   //             int b = Convert.ToInt16(ctdate.Substring(2, 2));
+   //             int d = Convert.ToInt16(ctdate.Substring(4, 4));
+   //             return new DateTime(d, b, a);
+   //         }
+   //         else { return null; }
+   //     }
+   // }
 }

@@ -29,6 +29,7 @@ namespace ExportOverDueFileUploader.DataImporter
             TableNames.Add("FinancialInstrument");
             TableNames.Add("LetterOfCredit");
             TableNames.Add("DocumentaryCollection");
+            TableNames.Add("BcaData");
 
         }
         public void Executeion()
@@ -136,14 +137,42 @@ namespace ExportOverDueFileUploader.DataImporter
 
             }
         }
-        public NewFiGdFilterModel ImportData(string jsondata, string EntityName)
+        public NewFiGdFilterModel ImportData(string jsondata, string EntityName, DataTable dataTable=null)
         {
             if (TableNames.Contains(EntityName))
             {
                 try
                 {
                     List<string> newGdFis = new List<string>();
-                    DataTable data = JsonConvert.DeserializeObject<DataTable>(jsondata.ToString());
+                    DataTable data = dataTable;
+                    if (dataTable == null)
+                    {
+                        data = JsonConvert.DeserializeObject<DataTable>(jsondata.ToString());
+                    }
+
+                    if (EntityName == "FinancialInstrument")
+                    {
+                        DataTable NonBcaData = data.Select("TRANSACTION_TYPE <> 1526").CopyToDataTable();
+
+                        // Assuming data is a DataTable
+                        var rowsToRemove = data.Select("TRANSACTION_TYPE <> 1526");
+                        foreach (var row in rowsToRemove)
+                        {
+                            data.Rows.Remove(row);
+                        }
+
+                        DataTable BcaData = data.Copy();
+                        data = NonBcaData;
+                        if (BcaData!=null && BcaData.Rows.Count>0)
+                        {
+                            ImportData(null, "BcaData", BcaData);
+                        }
+                        if (data.Rows.Count == 0)
+                        {
+                            return null;
+                        }
+
+                    }
                     data.Columns.Add("CreationTime");
                     data.Columns.Add("IsDeleted");
                     data.Columns.Add("TenantId");
@@ -155,8 +184,11 @@ namespace ExportOverDueFileUploader.DataImporter
                     else if (EntityName == "FinancialInstrument")
                     {
                         AddColumns(data, FiImporter.FiColoums);
-                    }   
-
+                    }
+                    else if (EntityName == "BcaData")
+                    {
+                        AddColumns(data, FiImporter.BcaColoums);
+                    }
                     if (data.Columns.Contains("ID"))
                     {
                         data.Columns.Add("I_D");
@@ -186,6 +218,10 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             FiImporter.LoadFIInfoColoums(_row);
                         }
+                        else if (EntityName == "BcaData")
+                        {
+                            FiImporter.LoadBcaInfoColoums(_row);
+                        }
                     }
                     if (data.Columns.Contains("ID"))
                     {
@@ -201,7 +237,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         var gdNumbers = ExtractFilisterList(data);
                         filter = gdNumbers;
-                    }
+                    } 
                     return filter;
                 }
                 catch (Exception ex)

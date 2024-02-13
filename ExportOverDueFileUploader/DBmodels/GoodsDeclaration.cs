@@ -54,7 +54,7 @@ public partial class GoodsDeclaration
 
     public string? SOURCE_ADDRESS { get; set; }
 
-    public string? LstfinInsUniqueNumbers { get; set; }
+    public string LstfinInsUniqueNumbers { get; set; }
 
     public string? itemInformationJson { get; set; }
 

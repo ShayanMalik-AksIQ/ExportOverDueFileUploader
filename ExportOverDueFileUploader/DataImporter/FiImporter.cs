@@ -1,4 +1,5 @@
 ﻿using ExportOverDueFileUploader.Modles.JsonHelper;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -24,9 +25,17 @@ namespace ExportOverDueFileUploader.DataImporter
             "ExporterName",
             "ExporterRegNo",
             "ExporterNTN",
-            "Days"
+            "Days",
+            "FiCertifcationdate"
         };
 
+        public static List<string> BcaColoums = new List<string>
+        {
+            "RealizationInfoJson",
+            "finInsUniqueNumber",
+            "gdNumber",
+            "bcaUniqueIdNumber"
+        };
         public static void LoadFIInfoColoums(DataRow _row)
         {
             try
@@ -46,7 +55,49 @@ namespace ExportOverDueFileUploader.DataImporter
                     _row["ExporterCity"] = payload.paymentInformation?.exporterCountry;
                     _row["ExporterName"] = payload.exporterName;
                     _row["days"] = payload?.lcData?.days ?? (payload?.contractCollectionData?.days ?? 0);
+
+                    if (!payload.finInsUniqueNumber.IsNullOrEmpty())
+                    {
+                        try
+                        {
+
+                            string ctdate = payload.finInsUniqueNumber.Split('-').ToList().LastOrDefault();
+                            int a = Convert.ToInt16(ctdate.Substring(0, 2));
+                            int b = Convert.ToInt16(ctdate.Substring(2, 2));
+                            int d = Convert.ToInt16(ctdate.Substring(4, 4));
+
+                            _row["FiCertifcationdate"] = new DateTime(d, b, a);
+                        }
+                        catch
+                        {
+                            _row["FiCertifcationdate"] = null;
+                        }
+
+                    }
+                    else
+                    {
+                        _row["FiCertifcationdate"] = null;
+                    }
                 }
+
+            }
+            catch
+            {
+                return;
+            }
+
+        }
+
+        public static void LoadBcaInfoColoums(DataRow _row)
+        {
+            try
+            {
+                BCAPayLoad payload = JsonConvert.DeserializeObject<BCAPayLoad>(_row["PAYLOAD"]?.ToString());
+                _row["bcaUniqueIdNumber"] = payload?.BcaUniqueIdNumber;
+                _row["gdNumber"] = payload?.GdNumber;
+                _row["finInsUniqueNumber"] = payload?.FinInsUniqueNumber;
+                _row["RealizationInfoJson"] = payload?.NetAmountRealized != null ? JsonConvert.SerializeObject(payload.NetAmountRealized) : null;
+
 
             }
             catch

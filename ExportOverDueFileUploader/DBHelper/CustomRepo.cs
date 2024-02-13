@@ -117,10 +117,7 @@ namespace ExportOverDueFileUploader.DBHelper
                             g.LstfinInsUniqueNumbers,
                             g.blDate,
                             g.gdNumber,
-                            g.totalDeclaredValue,
-                            g.MatruityDate,
-                            g.V20Felids,
-                            g.OutstandingAmount
+                            g.totalDeclaredValue
                         })
                         .ToList();
                 result = rawResult.Select(g => new GoodsDeclaration
@@ -133,9 +130,6 @@ namespace ExportOverDueFileUploader.DBHelper
                         blDate = g.blDate,
                         gdNumber = g.gdNumber,
                         totalDeclaredValue = g.totalDeclaredValue,
-                        MatruityDate = g.MatruityDate,
-                        V20Felids = g.V20Felids,
-                        OutstandingAmount = g.OutstandingAmount,
                         GDDate = g.GDDate,
 
                     }).ToList();
@@ -168,7 +162,8 @@ namespace ExportOverDueFileUploader.DBHelper
                                                                 f.lcData,
                                                                 f.modeOfPayment,
                                                                 f.openAccountGdNumber,
-                                                                f.paymentInformation
+                                                                f.paymentInformation,
+                                                                f.FiCertifcationdate
                                                             })
                                                             .ToList();
 
@@ -183,7 +178,8 @@ namespace ExportOverDueFileUploader.DBHelper
                     lcData = f.lcData,
                     modeOfPayment = f.modeOfPayment,
                     openAccountGdNumber = f.openAccountGdNumber,
-                    paymentInformation = f.paymentInformation
+                    paymentInformation = f.paymentInformation,
+                    FiCertifcationdate = f.FiCertifcationdate,
                 }).ToList();
                 return result;
 
@@ -315,10 +311,7 @@ namespace ExportOverDueFileUploader.DBHelper
 
                                                              g.blDate,
                                                              g.gdNumber,
-                                                             g.totalDeclaredValue,
-                                                             g.MatruityDate,
-                                                             g.V20Felids,
-                                                             g.OutstandingAmount
+                                                             g.totalDeclaredValue
                                                          })
                                                          .ToList();
 
@@ -332,9 +325,6 @@ namespace ExportOverDueFileUploader.DBHelper
                     blDate = g.blDate,
                     gdNumber = g.gdNumber,
                     totalDeclaredValue = g.totalDeclaredValue,
-                    MatruityDate = g.MatruityDate,
-                    V20Felids = g.V20Felids,
-                    OutstandingAmount = g.OutstandingAmount,
                     GDDate = g.GDDate,
 
                 }).ToList();
