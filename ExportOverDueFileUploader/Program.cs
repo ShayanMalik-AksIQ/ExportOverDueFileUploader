@@ -29,14 +29,14 @@ internal class Program
         var dbContext = new ExportOverDueContext();
 
 
-        var results = dbContext.Database
-    .SqlQuery<long>(FormattableStringFactory.Create("SELECT id FROM FIsInGoodsDeclarations"))
-    .ToList();
+    //    var results = dbContext.Database
+    //.SqlQuery<long>(FormattableStringFactory.Create("SELECT id FROM FIsInGoodsDeclarations"))
+    //.ToList();
 
 
 
 
-
+        
 
 
 
