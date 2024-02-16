@@ -1,7 +1,5 @@
-﻿using Microsoft.IdentityModel.Tokens;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
@@ -87,24 +85,9 @@ public partial class FinancialInstrument
 
     public int? Days { get; set; }
 
+    public DateTime? FiCertifcationdate { get; set; }
+
     public virtual ICollection<GD_FI_Link> GD_FI_Links { get; set; } = new List<GD_FI_Link>();
 
-    public DateTime? FiCertifcationdate { get; set; }
-   //[NotMapped]
-   // public DateTime? FiCertifcationdate
-   // {
-   //     get
-   //     {
-   //         if (!finInsUniqueNumber.IsNullOrEmpty())
-   //         {
 
-   //             string ctdate = finInsUniqueNumber.Split('-').ToList().LastOrDefault();
-   //             int a = Convert.ToInt16(ctdate.Substring(0, 2));
-   //             int b = Convert.ToInt16(ctdate.Substring(2, 2));
-   //             int d = Convert.ToInt16(ctdate.Substring(4, 4));
-   //             return new DateTime(d, b, a);
-   //         }
-   //         else { return null; }
-   //     }
-   // }
 }

@@ -28,6 +28,7 @@ public partial class ExportOverDueContext : DbContext
     public virtual DbSet<GoodsDeclaration> GoodsDeclarations { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer(AppSettings.ConnectionString);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -66,7 +67,7 @@ public partial class ExportOverDueContext : DbContext
 
             entity.HasIndex(e => e.GdId, "IX_GD_FI_Link_GdId");
 
-            entity.HasIndex(e => new { e.Id, e._MatruityDate, e.FiId, e.GdId }, "NonClusteredIndex-20240124-124710");
+            entity.HasIndex(e => new { e.Id, e.Amount, e._MatruityDate, e.FiId, e.GdId }, "NonClusteredIndex-20240213-111004");
 
             entity.HasOne(d => d.Fi).WithMany(p => p.GD_FI_Links).HasForeignKey(d => d.FiId);
 
@@ -76,8 +77,6 @@ public partial class ExportOverDueContext : DbContext
         modelBuilder.Entity<GoodsDeclaration>(entity =>
         {
             entity.ToTable("GoodsDeclaration");
-
-            entity.HasIndex(e => new { e.Id, e.GDDate }, "NonClusteredIndex-20240124-124535");
         });
 
         OnModelCreatingPartial(modelBuilder);

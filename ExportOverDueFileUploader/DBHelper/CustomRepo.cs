@@ -53,7 +53,7 @@ namespace ExportOverDueFileUploader.DBHelper
             {
                 var context = new ExportOverDueContext();
                 var lstResult = context.GoodsDeclarations
-                                                         .FromSqlRaw($"SELECT GDDate,[Id],IsDeleted,[TenantId], [LstfinInsUniqueNumbers], [blDate], [gdNumber], [totalDeclaredValue], [MatruityDate], [V20Felids], [OutstandingAmount] FROM [GoodsDeclaration] WHERE TenantId = {TenantId} AND [MESSAGE] LIKE '%Received' AND IsDeleted=0")
+                                                         .FromSqlRaw($"SELECT GDDate,[Id],IsDeleted,[TenantId], [LstfinInsUniqueNumbers], [blDate], [gdNumber], [totalDeclaredValue] FROM [GoodsDeclaration] WHERE TenantId = {TenantId} AND [MESSAGE] LIKE '%Received' AND IsDeleted=0")
                                                          
                                                          .Select(g => new
                                                          {
@@ -66,9 +66,6 @@ namespace ExportOverDueFileUploader.DBHelper
                                                              g.blDate,
                                                              g.gdNumber,
                                                              g.totalDeclaredValue,
-                                                             g.MatruityDate,
-                                                             g.V20Felids,
-                                                             g.OutstandingAmount
                                                          })
                                                          .ToList();
 
@@ -82,9 +79,6 @@ namespace ExportOverDueFileUploader.DBHelper
                     blDate = g.blDate,
                     gdNumber = g.gdNumber,
                     totalDeclaredValue = g.totalDeclaredValue,
-                    MatruityDate = g.MatruityDate,
-                    V20Felids = g.V20Felids,
-                    OutstandingAmount = g.OutstandingAmount,
                     GDDate = g.GDDate,
 
                 }).ToList();

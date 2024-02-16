@@ -54,7 +54,7 @@ public partial class GoodsDeclaration
 
     public string? SOURCE_ADDRESS { get; set; }
 
-    public string LstfinInsUniqueNumbers { get; set; }
+    public string? LstfinInsUniqueNumbers { get; set; }
 
     public string? itemInformationJson { get; set; }
 
@@ -64,11 +64,7 @@ public partial class GoodsDeclaration
 
     public float? totalDeclaredValue { get; set; }
 
-    public DateTime? MatruityDate { get; set; }
-
-    public string? V20Felids { get; set; }
-
-    public float? OutstandingAmount { get; set; }
+    public string? gdStatus { get; set; }
 
     public DateTime? GDDate { get; set; }
 
@@ -87,7 +83,6 @@ public partial class GoodsDeclaration
     public string? modeOfPayment { get; set; }
 
     public virtual ICollection<GD_FI_Link> GD_FI_Links { get; set; } = new List<GD_FI_Link>();
-
     [NotMapped]
     public List<FiNumberAndMode> FiNumbersAndModes
     {

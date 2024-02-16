@@ -147,9 +147,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                 if (!GdV20Dates.IsNullOrEmpty())
                 {
 
-                    gd.V20Felids = JsonConvert.SerializeObject(GdV20Dates);
-                    gd.MatruityDate = GdV20Dates[0].MatruityDate != null ? DateTime.ParseExact(GdV20Dates[0].MatruityDate, "dd-MMM-yyyy", null) : null;
-
+                   
                     y = y + GdV20Dates.Count;
                     CustomRepo.InsertFI_GD_Link(GdV20Dates);
                     // _customRepository.UpdateGD(gd.V20Felids, DateTime.Now, gd.Id);
@@ -314,8 +312,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     if (!GdV20Dates.IsNullOrEmpty())
                     {
 
-                        gd.V20Felids = JsonConvert.SerializeObject(GdV20Dates);
-                        gd.MatruityDate = GdV20Dates[0].MatruityDate != null ? DateTime.ParseExact(GdV20Dates[0].MatruityDate, "dd-MMM-yyyy", null) : null;
+                       
 
                     }
                     V20Dates.AddRange(GdV20Dates);
@@ -464,8 +461,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                 if (!GdV20Dates.IsNullOrEmpty())
                 {
 
-                    gd.V20Felids = JsonConvert.SerializeObject(GdV20Dates);
-                    gd.MatruityDate = GdV20Dates[0].MatruityDate != null ? DateTime.ParseExact(GdV20Dates[0].MatruityDate, "dd-MMM-yyyy", null) : null;
+                    
 
                     y = y + GdV20Dates.Count;
                     // CustomRepo.InsertFI_GD_Link(GdV20Dates);

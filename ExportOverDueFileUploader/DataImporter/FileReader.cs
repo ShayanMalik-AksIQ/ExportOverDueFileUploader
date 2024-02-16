@@ -150,7 +150,15 @@ namespace ExportOverDueFileUploader.DataImporter
                         if (headerIndex < headerRow.Count)
                         {
                             var cellValue = worksheet.Cell(row, col).Value;
-                            rowData[headerRow[headerIndex]] = cellValue.GetText != null ? cellValue.ToString() : null;
+                            if(cellValue.ToString()!=null && cellValue.ToString() != "")
+                            {
+                                 rowData[headerRow[headerIndex]] =  cellValue.ToString();
+                            }
+                            else
+                            {
+                                rowData[headerRow[headerIndex]] = null;
+                            }
+                            
                         }
                     }
 
