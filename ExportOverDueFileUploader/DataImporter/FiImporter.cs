@@ -34,12 +34,15 @@ namespace ExportOverDueFileUploader.DataImporter
             "RealizationInfoJson",
             "finInsUniqueNumber",
             "gdNumber",
-            "bcaUniqueIdNumber"
+            "bcaUniqueIdNumber",
+            "BcaDate"
+
         };
         public static void LoadFIInfoColoums(DataRow _row)
         {
             try
             {
+                var x = _row["PAYLOAD"]?.ToString();
                 FiPayLoadJson payload = JsonConvert.DeserializeObject<FiPayLoadJson>(_row["PAYLOAD"]?.ToString());
                 if (payload != null)
                 {
@@ -97,7 +100,17 @@ namespace ExportOverDueFileUploader.DataImporter
                 _row["gdNumber"] = payload?.GdNumber;
                 _row["finInsUniqueNumber"] = payload?.FinInsUniqueNumber;
                 _row["RealizationInfoJson"] = payload?.NetAmountRealized != null ? JsonConvert.SerializeObject(payload.NetAmountRealized) : null;
+                if (payload?.BcaUniqueIdNumber != null)
+                {
+                    string ctdate = payload?.BcaUniqueIdNumber?.Split('-').ToList().LastOrDefault();
+                    int a = Convert.ToInt16(ctdate.Substring(0, 2));
+                    int b = Convert.ToInt16(ctdate.Substring(2, 2));
+                    int d = Convert.ToInt16(ctdate.Substring(4, 4));
 
+                    _row["BcaDate"] = new DateTime(d, b, a);
+
+             
+                }
 
             }
             catch

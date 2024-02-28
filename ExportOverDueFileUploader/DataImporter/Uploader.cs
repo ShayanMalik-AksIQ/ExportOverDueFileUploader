@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.Office2010.Excel;
+﻿using DocumentFormat.OpenXml.InkML;
+using DocumentFormat.OpenXml.Office2010.Excel;
 using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.MatuirtyBO;
 using Microsoft.Data.SqlClient;
@@ -18,8 +19,9 @@ namespace ExportOverDueFileUploader.DataImporter
 {
     public class Uploader
     {
+
         List<string> TableNames = new List<string>();
-        public DateTime DateTimeNow= new DateTime();
+        public DateTime DateTimeNow = new DateTime();
         private readonly ILogger _logger;
         public Uploader()
         {
@@ -34,110 +36,190 @@ namespace ExportOverDueFileUploader.DataImporter
         }
         public void Executeion()
         {
-            Console.WriteLine("Export Over Due Uploader Execution Begins......");
-            ExportOverDueContext context = new ExportOverDueContext();
-            var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted==false);//aproved only
-            if (lstFileTypes.IsNullOrEmpty())
+            try
             {
-                Console.WriteLine("Error:No File Type In DB..");
-                return;
-            }
-            foreach (var fileType in lstFileTypes)
-            {
-                Console.WriteLine($"File:{fileType.Name} Folder:{fileType.FilePath} Uploader Begins.....");
-                var BasePath = fileType.FilePath;
-                var Files = GetFileNamesInFolder(BasePath);
-
-                foreach (var file in Files)
+                Seriloger.LoggerInstance.Information("Export Over Due Uploader Execution Begins ......");
+                ExportOverDueContext context = new ExportOverDueContext();
+                var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted == false).ToList();//aproved only
+                if (lstFileTypes.IsNullOrEmpty())
                 {
-                    FileImportAuditTrail auditTrail = new FileImportAuditTrail();
-                    try
+                    Seriloger.LoggerInstance.Error("Error:No File Type In DB..");
+                    return;
+                }
+                foreach (var fileType in lstFileTypes)
+                {
+                    Seriloger.LoggerInstance.Information($"File:{fileType.Name} Folder:{fileType.FilePath} In Progress....");
+                    var BasePath = fileType.FilePath;
+                    var Files = GetFileNamesInFolder(BasePath);
+                    if (Files == null)
                     {
-                        string FileJsonData = string.Empty;
-                        if (file.EndsWith(".xlsx"))
-                        {
-                            FileJsonData = FileReader.ReadAndValidateExcelFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
-                        }
-                        else if (file.EndsWith(".csv"))
-                        {
-                            FileJsonData = FileReader.ReadAndValidateCsvFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
-                        }
-                        else
-                        {
-                            Console.WriteLine("File Type Incorect");
-                            continue;
-                        }
+                        continue;
+                    }
+                    foreach (var file in Files)
+                    {
+                        FileImportAuditTrail auditTrail = new FileImportAuditTrail();
                         try
                         {
-
-                            auditTrail.FileName = file;
-                            auditTrail.FileTypeId = fileType.Id;//
-                            if (FileJsonData != null && !FileJsonData.StartsWith("Error"))
+                            string FileJsonData = string.Empty;
+                            if (file.EndsWith(".xlsx") || file.EndsWith(".xls"))
                             {
-                                Console.WriteLine($"{fileType.Name} file:{file} Reading Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
-                                DateTimeNow = DateTime.Now;
-                                var filters = ImportData(FileJsonData, fileType.Description);
-                                Console.WriteLine($"{fileType.Name} file:{file} Db Export Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
-                                auditTrail.Remarks = "Success";
-                                auditTrail.Success = true;
-                                if (fileType.Description == "GoodsDeclaration")
-                                {
-
-                                    LinkGdToFI.SyncNewGd(DateTimeNow, filters.fis);
-                                }
-                                if (fileType.Description == "FinancialInstrument")
-                                {
-
-                                 //   LinkGdToFI.SyncNewFi(DateTimeNow);
-                                }
-                                Console.WriteLine($"{fileType.Name} file:{file} Sync Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
-
+                                FileJsonData = FileReader.ReadAndValidateExcelFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
+                            }
+                            else if (file.EndsWith(".csv"))
+                            {
+                                FileJsonData = FileReader.ReadAndValidateCsvFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
                             }
                             else
                             {
-                                auditTrail.Success = false;
-                                auditTrail.Remarks = $"{FileJsonData}";
-                                Console.WriteLine($"{fileType.Name} file:{file} Hadders MissMached {Files.IndexOf(file) + 1}/{Files.Count}");
-
+                                Seriloger.LoggerInstance.Error("File Type Incorect");
+                                continue;
                             }
-
-                        }
-                        catch (Exception ex)
-                        {
-                            auditTrail.Success = false;
-                            auditTrail.Remarks = $"{ex.Message}";
-                            Console.WriteLine($"Error :{ex.Message} on  {fileType.Name} file:{file} - {Files.IndexOf(file) + 1}/{Files.Count}");
-                        }
-                        finally
-                        {
-
                             try
                             {
-                                auditTrail.TenantId = AppSettings.TenantId;
-                                auditTrail.CreationTime = DateTimeNow;
-                                ExportOverDueContext context1 = new ExportOverDueContext();
-                                context1.FileImportAuditTrails.Add(auditTrail);
-                                context1.SaveChanges();
-                                Console.WriteLine($"{fileType.Name} file:{file} {Files.IndexOf(file) + 1}/{Files.Count}  Uploaded Sucess With Audit");
+
+                                auditTrail.FileName = file;
+                                auditTrail.FileTypeId = fileType.Id;//
+                                if (FileJsonData != null && !FileJsonData.StartsWith("Error"))
+                                {
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Reading Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
+                                    DateTimeNow = DateTime.Now;
+                                    auditTrail.TenantId = AppSettings.TenantId;
+                                    auditTrail.CreationTime = DateTimeNow;
+                                    context.FileImportAuditTrails.Add(auditTrail);
+                                    context.SaveChanges();
+                                    var filters = ImportData(FileJsonData, fileType.Description, auditTrail.Id, file);
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Db Export Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
+                                    auditTrail.Remarks = "Success";
+                                    auditTrail.Success = true;
+                                    if (fileType.Description == "GoodsDeclaration")
+                                    {
+
+                                        LinkGdToFI.SyncNewGd(auditTrail.Id, filters);
+                                    }
+                                    if (fileType.Description == "FinancialInstrument")
+                                    {
+
+                                        LinkGdToFI.SyncNewFi(auditTrail.Id, filters);
+                                    }
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Sync Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
+
+                                }
+                                else
+                                {
+                                    auditTrail.Success = false;
+                                    auditTrail.Remarks = $"{FileJsonData}";
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Hadders MissMached {Files.IndexOf(file) + 1}/{Files.Count}");
+
+                                }
+
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"Error :{ex.Message} {fileType.Name} file:{file} {Files.IndexOf(file) + 1}/{Files.Count}  Uploaded Failed ");
-                               
+                                auditTrail.Success = false;
+                                auditTrail.Remarks = $"{ex.Message}";
+                                Seriloger.LoggerInstance.Information($"Error :{ex.Message} on  {fileType.Name} file:{file} - {Files.IndexOf(file) + 1}/{Files.Count}");
                             }
+                            finally
+                            {
+
+                                try
+                                {
+                                    
+                                    ExportOverDueContext context1 = new ExportOverDueContext();
+                                    context1.FileImportAuditTrails.Update(auditTrail);
+                                    context1.SaveChanges();
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} {Files.IndexOf(file) + 1}/{Files.Count}  Uploaded Sucess With Audit");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Seriloger.LoggerInstance.Error($"Error :{ex.Message} {fileType.Name} file:{file} {Files.IndexOf(file) + 1}/{Files.Count}  Uploaded Failed ");
+
+                                }
+                            }
+
                         }
 
+                        catch (Exception ex)
+                        {
+                            Seriloger.LoggerInstance.Error(ex.Message);
+                        }
                     }
 
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
                 }
 
             }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error(ex.Message);
+            }
+
         }
-        public NewFiGdFilterModel ImportData(string jsondata, string EntityName, DataTable dataTable=null)
+
+
+
+
+
+
+
+        public void Executeion(DataTable dataTable, string fileName, string EntityName)
+        {
+            FileImportAuditTrail auditTrail = new FileImportAuditTrail();
+            ExportOverDueContext context = new ExportOverDueContext();
+            try
+            {
+                long id = context.FileTypes.FirstOrDefault(x => x.Description == "BcaData").Id;
+                auditTrail.FileName = fileName;
+                auditTrail.FileTypeId = id;//
+                context.FileImportAuditTrails.Add(auditTrail);
+                context.SaveChanges();
+                if (dataTable != null)
+                {
+                    var filters = ImportData(null, fileName,auditTrail.Id, EntityName, dataTable);
+                    Seriloger.LoggerInstance.Information($"Bca file:{fileName} Db Export Sucess");
+                    auditTrail.Remarks = "Success";
+                    auditTrail.Success = true;
+
+                }
+                else
+                {
+                    auditTrail.Success = false;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                auditTrail.Success = false;
+                auditTrail.Remarks = $"{ex.Message}";
+                Seriloger.LoggerInstance.Error($"Error :{ex.Message} on  BCA file:{fileName} ");
+            }
+            finally
+            {
+
+                try
+                {
+                    auditTrail.TenantId = AppSettings.TenantId;
+                    auditTrail.CreationTime = DateTimeNow;
+                    ExportOverDueContext context1 = new ExportOverDueContext();
+                    context1.FileImportAuditTrails.Update(auditTrail);
+                    context1.SaveChanges();
+                    Seriloger.LoggerInstance.Information($"Bca file:{fileName} Uploaded Sucess With Audit");
+                }
+                catch (Exception ex)
+                {
+                    Seriloger.LoggerInstance.Error($"Error :{ex.Message} Bca file:{fileName}  Uploaded Failed ");
+
+                }
+            }
+
+        }
+
+
+
+
+
+
+
+        public NewFiGdFilterModel ImportData(string jsondata, string EntityName,long FileID, string fileName,DataTable dataTable = null)
         {
             if (TableNames.Contains(EntityName))
             {
@@ -149,7 +231,10 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         data = JsonConvert.DeserializeObject<DataTable>(jsondata.ToString());
                     }
-
+                    else
+                    {
+                        data = dataTable;
+                    }
                     if (EntityName == "FinancialInstrument")
                     {
                         DataTable NonBcaData = data.Select("TRANSACTION_TYPE <> 1526").CopyToDataTable();
@@ -163,9 +248,9 @@ namespace ExportOverDueFileUploader.DataImporter
 
                         DataTable BcaData = data.Copy();
                         data = NonBcaData;
-                        if (BcaData!=null && BcaData.Rows.Count>0)
+                        if (BcaData != null && BcaData.Rows.Count > 0)
                         {
-                            ImportData(null, "BcaData", BcaData);
+                            Executeion(BcaData, "BcaData", fileName);
                         }
                         if (data.Rows.Count == 0)
                         {
@@ -177,6 +262,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     data.Columns.Add("IsDeleted");
                     data.Columns.Add("TenantId");
                     data.Columns.Add("CreatorUserId");
+                    data.Columns.Add("FileAuditId");
                     if (EntityName == "GoodsDeclaration")
                     {
                         AddColumns(data, GdImporter.GdColumns);
@@ -204,15 +290,16 @@ namespace ExportOverDueFileUploader.DataImporter
                         _row["IsDeleted"] = false;
                         _row["TenantId"] = tenantId;
                         _row["CreatorUserId"] = null;
-                      
+                        _row["FileAuditId"] = FileID;
+
                         if (EntityName == "GoodsDeclaration")
                         {
                             var fis = GdImporter.LoadGdInfoColoums(_row);
-                            if (fis!= null)
+                            if (fis != null)
                             {
                                 newGdFis.AddRange(fis);
                             }
-                            
+
                         }
                         else if (EntityName == "FinancialInstrument")
                         {
@@ -228,36 +315,31 @@ namespace ExportOverDueFileUploader.DataImporter
                         data.Columns.Remove("ID");
                     }
                     BulkInsert(data, EntityName);
-                    NewFiGdFilterModel filter=new NewFiGdFilterModel();
+                    NewFiGdFilterModel filter = new NewFiGdFilterModel();
                     if (EntityName == "GoodsDeclaration")
                     {
-                        filter.fis = ExtractFiNumberFromNewGDs(data).fis;  
+                        filter = ExtractFiNumberFromNewGDs(data);
                     }
                     if (EntityName == "FinancialInstrument")
                     {
-                        var gdNumbers = ExtractFilisterList(data);
-                        filter = gdNumbers;
-                    } 
+                        filter = ExtractFilisterList(data);
+                        //filter = gdNumbers;
+                    }
                     return filter;
                 }
                 catch (Exception ex)
                 {
 
-                    Console.WriteLine($"Error In Import Data:{ex.Message}");
-                    return null; 
+                    Seriloger.LoggerInstance.Error($"Error In Import Data:{ex.Message}");
+                    return null;
                 }
             }
             else
             {
-                Console.WriteLine($"Incorrect Table Name ");
+                Seriloger.LoggerInstance.Error($"Incorrect Table Name ");
                 return null;
             }
         }
-
-
-
-
-
         public void BulkInsert(DataTable dt, string entityname)
         {
             try
@@ -310,39 +392,54 @@ namespace ExportOverDueFileUploader.DataImporter
                 }
                 else
                 {
-                    Console.WriteLine($"Folder not found: {folderPath}");
+                    Seriloger.LoggerInstance.Information($"Folder not found: {folderPath}");
                     return null; // Return an empty array if the folder doesn't exist
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Seriloger.LoggerInstance.Error($"Error: {ex.Message}");
                 return null; // Return an empty array in case of an exception
             }
         }
 
         private NewFiGdFilterModel ExtractFiNumberFromNewGDs(DataTable dataTable)
         {
-            List<string> fiNumberList = new List<string>();
-           
+            List<string> fis = new List<string>();
+            List<string> gds = new List<string>();
+
             foreach (DataRow row in dataTable.Rows)
             {
-                
+
                 string LstfinInsUniqueNumbers = row["LstfinInsUniqueNumbers"].ToString();
                 List<FiNumberAndMode> fiNumberAndModes = new List<FiNumberAndMode>();
-                if (LstfinInsUniqueNumbers != null && LstfinInsUniqueNumbers !="" && !LstfinInsUniqueNumbers.StartsWith("("))
+                if (LstfinInsUniqueNumbers != null && LstfinInsUniqueNumbers != "")
                 {
                     foreach (var fi in LstfinInsUniqueNumbers.Split(","))
                     {
-                        fiNumberList.Add(Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value);
+                        var x = new FiNumberAndMode
+                        {
+                            FiNumber = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value ?? null,
+                            ModeOFPayment = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
+                        };
+                        fis.Add(x.FiNumber);
+                        if (fi == "(305)")
+                        {
+                            if (row["gdNumber"] != null)
+                            {
+                                gds.Add(row["gdNumber"].ToString());
+                            }
+                        }
                     }
                 }
-               
+
+
             }
 
             return new NewFiGdFilterModel
             {
-                fis = fiNumberList
+                fis = fis,
+                gds = gds
             };
         }
 
@@ -355,22 +452,26 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 string gd = row["openAccountGdNumber"].ToString();
                 string fi = row["finInsUniqueNumber"].ToString();
-
-                gdNumberList.Add(gd);
-                fis.Add(fi);
+                if (gd != "")
+                {
+                    gdNumberList.Add(gd);
+                }
+                if (fi != "")
+                {
+                    fis.Add(fi);
+                }
             }
 
             return new NewFiGdFilterModel
             {
                 gds = gdNumberList,
                 fis = fis
-
             };
         }
 
-        
-                                           
+
+
     }
 
-   
+
 }

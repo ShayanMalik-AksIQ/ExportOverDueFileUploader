@@ -82,6 +82,9 @@ public partial class GoodsDeclaration
 
     public string? modeOfPayment { get; set; }
 
+    public long? FileAuditId { get; set; }
+
+
     public virtual ICollection<GD_FI_Link> GD_FI_Links { get; set; } = new List<GD_FI_Link>();
     [NotMapped]
     public List<FiNumberAndMode> FiNumbersAndModes
@@ -94,7 +97,15 @@ public partial class GoodsDeclaration
 
                 foreach (var fi in LstfinInsUniqueNumbers.Split(","))
                 {
+                    if(fi.StartsWith("("))
+                    {
+                        fiNumberAndModes.Add(new FiNumberAndMode { ModeOFPayment = fi.Trim('(', ')') });
+                    }
+                    else
+                    {
+
                     fiNumberAndModes.Add(Parse(fi));
+                    }
                 }
 
             }
@@ -124,6 +135,7 @@ public partial class GoodsDeclaration
     {
         FiNumber = Regex.Match(input, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value,
         ModeOFPayment = Regex.Match(input, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
+
     };
 }
 

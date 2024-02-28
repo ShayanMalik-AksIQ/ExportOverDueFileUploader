@@ -18,46 +18,57 @@ namespace ExportOverDueFileUploader.DataImporter
     {
         public static string ReadAndValidateCsvFile(string filePath, int HeaderStart, string HeadersToValidate)
         {
-            string csvFilePath = filePath;
-
-            // Create a configuration for CsvHelper
-            var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture);
-
-            // Read CSV headers
-            using (var reader = new StreamReader(csvFilePath))
-            using (var csv = new CsvReader(reader, csvConfig))
+            try
             {
-                // Read the headers without advancing the reader
-                csv.Read();
-                csv.ReadHeader();
+                string csvFilePath = filePath;
 
-                // Get the headers as an array of strings
-                var headers = csv.HeaderRecord.ToList();
+                // Create a configuration for CsvHelper
+                var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture);
 
-                // Check if the headers match the expected headers
-                if (HeadersToValidate == string.Join(",", headers))
+                // Read CSV headers
+                using (var reader = new StreamReader(csvFilePath))
+                using (var csv = new CsvReader(reader, csvConfig))
                 {
-                    // Headers match, proceed to read CSV data into a list of dictionaries
-                    List<Dictionary<string, object>> csvData = csv.GetRecords<dynamic>()
-                        .Select(record => ((IDictionary<string, object>)record).ToDictionary(kvp => kvp.Key, kvp => kvp.Value))
-                        .ToList();
+                    // Read the headers without advancing the reader
+                    csv.Read();
+                    csv.ReadHeader();
 
-                    var settings = new JsonSerializerSettings
+                    // Get the headers as an array of strings
+                    var headers = csv.HeaderRecord.ToList();
+
+                    // Check if the headers match the expected headers
+                    if (HeadersToValidate == string.Join(",", headers))
                     {
-                        Formatting = Newtonsoft.Json.Formatting.Indented,
-                        Converters = { new EmptyStringToNullConverter() }
-                    };
+                        // Headers match, proceed to read CSV data into a list of dictionaries
+                        List<Dictionary<string, object>> csvData = csv.GetRecords<dynamic>()
+                            .Select(record => ((IDictionary<string, object>)record).ToDictionary(kvp => kvp.Key, kvp => kvp.Value))
+                            .ToList();
 
-                    // Return the JSON representation of the CSV data
-                    return JsonConvert.SerializeObject(csvData, settings);
+                        var settings = new JsonSerializerSettings
+                        {
+                            Formatting = Newtonsoft.Json.Formatting.Indented,
+                            Converters = { new EmptyStringToNullConverter() }
+                        };
+
+                        // Return the JSON representation of the CSV data
+                        return JsonConvert.SerializeObject(csvData, settings);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Hadders MissMached");
+                        // Headers do not match, return an error message
+                        return "Error";
+                    }
                 }
-                else
-                {
-                    // Headers do not match, return an error message
-                    return "Hadders MissMached";
-                }
+
+
             }
-        }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return "Error";
+            }
+                    }
 
         public static string ReadAndValidateExcelFile(string filePath, int HadderStart, string HaddersToValidator)
         {
