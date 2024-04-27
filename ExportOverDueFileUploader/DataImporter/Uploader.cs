@@ -1,5 +1,6 @@
 ﻿using DocumentFormat.OpenXml.InkML;
 using DocumentFormat.OpenXml.Office2010.Excel;
+using ExportOverDueFileUploader.DBHelper;
 using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.MatuirtyBO;
 using Microsoft.Data.SqlClient;
@@ -40,7 +41,9 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 Seriloger.LoggerInstance.Information("Export Over Due Uploader Execution Begins ......");
                 ExportOverDueContext context = new ExportOverDueContext();
-                var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted == false).ToList();//aproved only
+                var maxLoadingOrder = context.RequestStatuses.Where(x => x.Module.ModuleName.ToLower() == "Setups".ToLower()).Select(x=>x.LoadingOrder).Max();
+
+                var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted == false && x.RequestStatus.LoadingOrder==maxLoadingOrder).ToList();//aproved only
                 if (lstFileTypes.IsNullOrEmpty())
                 {
                     Seriloger.LoggerInstance.Error("Error:No File Type In DB..");
@@ -53,7 +56,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     var Files = GetFileNamesInFolder(BasePath);
                     if (Files == null)
                     {
-                        continue;
+                        Seriloger.LoggerInstance.Error($"File:{fileType.Name} Folder:{fileType.FilePath} In Progress");
                     }
                     foreach (var file in Files)
                     {
@@ -237,17 +240,9 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     if (EntityName == "FinancialInstrument")
                     {
-                        DataTable NonBcaData = data.Select("TRANSACTION_TYPE <> 1526").CopyToDataTable();
-
-                        // Assuming data is a DataTable
-                        var rowsToRemove = data.Select("TRANSACTION_TYPE <> 1526");
-                        foreach (var row in rowsToRemove)
-                        {
-                            data.Rows.Remove(row);
-                        }
-
-                        DataTable BcaData = data.Copy();
-                        data = NonBcaData;
+                        
+                        DataTable BcaData = data.Select("TRANSACTION_TYPE = 1526 AND RESPONSE_CODE = 200").CopyToDataTable();
+                        data = data.Select("TRANSACTION_TYPE = 1524 AND RESPONSE_CODE = 200").CopyToDataTable();
                         if (BcaData != null && BcaData.Rows.Count > 0)
                         {
                             Executeion(BcaData, "BcaData", fileName);
@@ -286,6 +281,10 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             _row["I_D"] = _row["ID"];
                         }
+                        if (data.Columns.Contains("TRANSMISSION_DATETIME"))
+                        {
+                            _row["TRANSMISSION_DATETIME"] = GdImporter.ConvertTransmissionDate(_row["TRANSMISSION_DATETIME"].ToString());
+                        }
                         _row["CreationTime"] = DateTimeNow;
                         _row["IsDeleted"] = false;
                         _row["TenantId"] = tenantId;
@@ -314,7 +313,11 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         data.Columns.Remove("ID");
                     }
+
+
                     BulkInsert(data, EntityName);
+
+                    CustomRepo.RemoveDublicateGds(FileID);
                     NewFiGdFilterModel filter = new NewFiGdFilterModel();
                     if (EntityName == "GoodsDeclaration")
                     {

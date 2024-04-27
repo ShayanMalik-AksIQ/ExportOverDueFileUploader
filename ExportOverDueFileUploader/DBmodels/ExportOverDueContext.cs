@@ -27,8 +27,11 @@ public partial class ExportOverDueContext : DbContext
 
     public virtual DbSet<GoodsDeclaration> GoodsDeclarations { get; set; }
 
+    public virtual DbSet<Module> Modules { get; set; }
+
+    public virtual DbSet<RequestStatus> RequestStatuses { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer(AppSettings.ConnectionString);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -52,6 +55,8 @@ public partial class ExportOverDueContext : DbContext
             entity.ToTable("FileType");
 
             entity.HasIndex(e => e.RequestStatusId, "IX_FileType_RequestStatusId");
+
+            entity.HasOne(d => d.RequestStatus).WithMany(p => p.FileTypes).HasForeignKey(d => d.RequestStatusId);
         });
 
         modelBuilder.Entity<FinancialInstrument>(entity =>
@@ -67,8 +72,6 @@ public partial class ExportOverDueContext : DbContext
 
             entity.HasIndex(e => e.GdId, "IX_GD_FI_Link_GdId");
 
-            entity.HasIndex(e => new { e.Id, e.Amount, e._MatruityDate, e.FiId, e.GdId }, "NonClusteredIndex-20240213-111004");
-
             entity.HasOne(d => d.Fi).WithMany(p => p.GD_FI_Links).HasForeignKey(d => d.FiId);
 
             entity.HasOne(d => d.Gd).WithMany(p => p.GD_FI_Links).HasForeignKey(d => d.GdId);
@@ -77,6 +80,15 @@ public partial class ExportOverDueContext : DbContext
         modelBuilder.Entity<GoodsDeclaration>(entity =>
         {
             entity.ToTable("GoodsDeclaration");
+        });
+
+        modelBuilder.Entity<RequestStatus>(entity =>
+        {
+            entity.ToTable("RequestStatus");
+
+            entity.HasIndex(e => e.ModuleID, "IX_RequestStatus_ModuleID");
+
+            entity.HasOne(d => d.Module).WithMany(p => p.RequestStatuses).HasForeignKey(d => d.ModuleID);
         });
 
         OnModelCreatingPartial(modelBuilder);

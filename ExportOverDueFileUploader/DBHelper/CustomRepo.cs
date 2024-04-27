@@ -277,6 +277,21 @@ namespace ExportOverDueFileUploader.DBHelper
 
 
         #endregion  GD_FI_Link
+
+
+
+        public static int RemoveDublicateGds(long FileAuditId)
+        {
+            var context = new ExportOverDueContext();
+      //      var Query = $"WITH rankedgoodsdeclarations AS (\r\n  SELECT \r\n    id, \r\n    gdnumber, \r\n    row_number() OVER (\r\n      partition BY gdnumber \r\n      ORDER BY \r\n        transmission_datetime DESC\r\n    ) AS rownum \r\n  FROM \r\n    goodsdeclaration \r\n  WHERE \r\n    message_id IN (\r\n      SELECT \r\n        message_id \r\n      FROM \r\n        goodsdeclaration \r\n      WHERE \r\n        direction LIKE 'RESPONSE' \r\n        AND status_code LIKE '200' \r\n    ) \r\n    AND direction LIKE 'REQUEST' \r\n    AND lstfininsuniquenumbers IS NOT NULL \r\n    \r\n) \r\nDELETE FROM \r\n  goodsdeclaration \r\nWHERE \r\n  id NOT IN (\r\n    select \r\n      id \r\n    from \r\n      rankedgoodsdeclarations \r\n    where \r\n      rownum = 1\r\n  ) \r\n";
+            //var Query = $"WITH RankedGoodsDeclarations AS (\r\n    SELECT \r\n        Id,\r\n        gdNumber,\r\n        ROW_NUMBER() OVER (PARTITION BY gdnumber ORDER BY TRANSMISSION_DATETIME DESC) AS RowNum\r\n    FROM \r\n        goodsdeclaration \r\n    WHERE  \r\n        message_id IN (\r\n            SELECT MESSAGE_ID \r\n            FROM GoodsDeclaration \r\n            WHERE DIRECTION LIKE 'RESPONSE' \r\n            AND STATUS_CODE LIKE '200'\r\n\t\t\tand FileAuditId = {FileAuditId}\r\n        ) \r\n        AND DIRECTION LIKE 'REQUEST' \r\n        AND LstfinInsUniqueNumbers IS NOT NULL and FileAuditId = {FileAuditId}\r\n)delete from GoodsDeclaration where id  not in (\r\nSELECT \r\n    Id\r\nFROM \r\n    RankedGoodsDeclarations\r\nWHERE \r\n    RowNum = 1) and FileAuditId = {FileAuditId};\r\n\t";
+            var Query = $"EXEC DeleteDuplicateGoodsDeclarations @FileAuditId = {FileAuditId}";
+            var result = context.Database.ExecuteSqlRaw(Query);
+            return result;
+
+        }
+
+
         //public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(long TenantId)
         //{
         //    try

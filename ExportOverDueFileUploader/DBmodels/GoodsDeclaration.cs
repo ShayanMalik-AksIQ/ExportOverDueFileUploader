@@ -14,7 +14,7 @@ public partial class GoodsDeclaration
 
     public string? MESSAGE_ID { get; set; }
 
-    public string? TRANSMISSION_DATETIME { get; set; }
+    public DateTime? TRANSMISSION_DATETIME { get; set; }
 
     public string? MESSAGE_TYPE { get; set; }
 

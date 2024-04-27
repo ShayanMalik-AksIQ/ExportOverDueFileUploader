@@ -3,15 +3,11 @@ using System.Collections.Generic;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
-public partial class FileType
+public partial class Module
 {
     public long Id { get; set; }
 
-    public string? Name { get; set; }
-
-    public string? Description { get; set; }
-
-    public string? FilePath { get; set; }
+    public string? ModuleName { get; set; }
 
     public int TenantId { get; set; }
 
@@ -29,13 +25,5 @@ public partial class FileType
 
     public DateTime? DeletionTime { get; set; }
 
-    public string? ColumnNames { get; set; }
-
-    public long? RequestStatusId { get; set; }
-
-    public int HeaderRow { get; set; }
-
-    public virtual ICollection<FileImportAuditTrail> FileImportAuditTrails { get; set; } = new List<FileImportAuditTrail>();
-
-    public virtual RequestStatus? RequestStatus { get; set; }
+    public virtual ICollection<RequestStatus> RequestStatuses { get; set; } = new List<RequestStatus>();
 }

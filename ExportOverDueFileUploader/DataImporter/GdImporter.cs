@@ -1,4 +1,6 @@
-﻿using ExportOverDueFileUploader.Modles.JsonHelper;
+﻿using DocumentFormat.OpenXml.Drawing.Charts;
+using ExportOverDueFileUploader.DBmodels;
+using ExportOverDueFileUploader.Modles.JsonHelper;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -44,7 +46,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 {
                     foreach (var financialInstrument in payload?.data?.financialInformation?.financialInstrument)
                     {
-                        if (financialInstrument.finInsUniqueNumber!=null)
+                        if (financialInstrument.finInsUniqueNumber != null)
                         {
 
                             fiNumber.Add(financialInstrument.finInsUniqueNumber?.ToString());
@@ -85,16 +87,71 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 return fiNumber;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return null;
             }
 
         }
 
+        public static System.Data.DataTable FilterGds(System.Data.DataTable gds)
+        {
+            // Create a new DataTable to store the filtered and processed data
+            System.Data.DataTable latestRows = new System.Data.DataTable();
+            latestRows = gds.Clone();
 
+            // Apply filters and conversions similar to your SQL query
+            foreach (DataRow row in gds.Rows)
+            {
+                if (row["DIRECTION"].ToString().Contains("REQUEST") &&
+                    row["LstfinInsUniqueNumbers"] != null)
+                {
+                    DateTime convertedDateTime;
+                    if (DateTime.TryParseExact(row["TRANSMISSION_DATETIME"].ToString(), "d MMM yyyy",
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None, out convertedDateTime))
+                    {
+                        latestRows.Rows.Add(row.ItemArray);
+                    }
+                }
+            }
 
+            // Filter the latest rows for each gdnumber
+            System.Data.DataTable result = latestRows.Clone();
+            foreach (DataRow groupRow in latestRows.AsEnumerable()
+                .GroupBy(r => r.Field<string>("gdnumber"))
+                .Select(g => g.OrderByDescending(r => r.Field<DateTime>("ConvertedDateTime")).First()))
+            {
+                result.ImportRow(groupRow);
+            }
+
+            return result;
+        }
+
+        public static DateTime? ConvertTransmissionDate(string dateString)
+        {
+            try
+            {
+                int lastDotIndex = dateString.LastIndexOf('.');
+                string dateStringWithoutMilliseconds = dateString.Substring(0, lastDotIndex);
+                string format = "dd-MMM-yy hh.mm.ss"; // Format without milliseconds
+                DateTime result = DateTime.ParseExact(dateStringWithoutMilliseconds, format, System.Globalization.CultureInfo.InvariantCulture);
+                string amPm = dateString.Substring(dateString.Length - 2);
+                if (amPm == "PM")
+                {
+                    result.AddHours(12);
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                var x = dateString;
+                return null;
+            }
+        }
 
 
     }
 }
+
+
