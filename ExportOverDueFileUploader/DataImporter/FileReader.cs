@@ -55,7 +55,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     else
                     {
-                        Console.WriteLine("Hadders MissMached");
+                        Seriloger.LoggerInstance.Error("Hadders MissMached");
                         // Headers do not match, return an error message
                         return "Error";
                     }
@@ -65,7 +65,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Seriloger.LoggerInstance.Error(ex.Message);
                 return "Error";
             }
                     }
@@ -99,7 +99,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
             catch(Exception ex)
             {
-                Console.WriteLine($"Error :{ex.Message}");
+                Seriloger.LoggerInstance.Error(ex.Message);
                 return $"Error :{ex.Message}";
             }
         
@@ -180,7 +180,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
             catch(Exception ex)
             {
-                Console.WriteLine($"Error :{ex.Message}");
+                Seriloger.LoggerInstance.Error(ex.Message);
                 throw;
             }
         }

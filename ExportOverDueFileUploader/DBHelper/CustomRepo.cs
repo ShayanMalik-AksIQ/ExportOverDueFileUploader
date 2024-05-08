@@ -4,6 +4,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using ExportOverDueFileUploader.DataImporter;
 using ExportOverDueFileUploader.DBmodels;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -37,12 +38,10 @@ namespace ExportOverDueFileUploader.DBHelper
     {
         public static void InsertFI_GD_Link(List<GD_FI_Link> v20fields)
         {
-            //  string update = "UPDATE GoodsDeclaration SET [V20Felids] = {0}, MatruityDate = {1} WHERE Id = {2}";
-            
-            foreach(var field in v20fields)
+            foreach (var field in v20fields)
             {
-                field.TenantId=AppSettings.TenantId;
-                field.CreationTime=DateTime.Now;
+                field.TenantId = AppSettings.TenantId;
+                field.CreationTime = DateTime.Now;
             }
             var context = new ExportOverDueContext();
 
@@ -52,6 +51,8 @@ namespace ExportOverDueFileUploader.DBHelper
 
 
         #region GD_FI_Link
+
+
         #region Sync newGD
         public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(long TenantId, long fileId)
         {
@@ -61,7 +62,7 @@ namespace ExportOverDueFileUploader.DBHelper
                 var result = new List<GoodsDeclaration>();
                 var rawResult = context.GoodsDeclarations
                         .Where(g => g.TenantId == TenantId && EF.Functions.Like(g.MESSAGE, "%Received%") && g.IsDeleted == false
-                               && g.FileAuditId== fileId)
+                               && g.FileAuditId == fileId)
                         .Select(g => new
                         {
                             g.GDDate,
@@ -95,7 +96,6 @@ namespace ExportOverDueFileUploader.DBHelper
                 return null;
             }
         }
-
         public static List<FinancialInstrument> GetFinancialInstrumentForV20Dates(long TenantId, NewFiGdFilterModel fis_gds)
         {
             try
@@ -159,8 +159,6 @@ namespace ExportOverDueFileUploader.DBHelper
                 return null;
             }
         }
-
-
         #endregion  Sync newGD
 
         #region Sync newFi
@@ -169,7 +167,6 @@ namespace ExportOverDueFileUploader.DBHelper
             try
             {
                 var context = new ExportOverDueContext();
-                // var ids= context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE == "1524" && g.IsDeleted == false)
                 var rawResult = context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE == "1524" && g.IsDeleted == false
                                                                     && g.FileAuditId == fileId)
                                                             .Select(f => new
@@ -211,7 +208,6 @@ namespace ExportOverDueFileUploader.DBHelper
                 return null;
             }
         }
-
         public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(NewFiGdFilterModel fis_gds, long TenantId)
         {
             try
@@ -233,38 +229,40 @@ namespace ExportOverDueFileUploader.DBHelper
                             g.totalDeclaredValue
                         })
                         .ToList();
-
-                var fisInGd = context.Database
-                                     .SqlQuery<FisInGdView>(FormattableStringFactory.Create($"select id,LstfinInsUniqueNumbers from [FIsInGoodsDeclarations] where TenantId={TenantId}"))
-                                     .ToList().Where(x => fis_gds.fis.Contains(x.LstfinInsUniqueNumbers)).Select(x => x.id).ToList();
-
-                rawResult.AddRange(context.GoodsDeclarations
-                        .Where(g => fisInGd.Contains(g.Id))
-                        .Select(g => new
-                        {
-                            g.GDDate,
-                            g.Id,
-                            g.IsDeleted,
-                            TenantId = g.TenantId,
-                            g.LstfinInsUniqueNumbers,
-                            g.blDate,
-                            g.gdNumber,
-                            g.totalDeclaredValue
-                        })
-                        .ToList());
-
-                result = rawResult.Select(g => new GoodsDeclaration
+                if (!rawResult.IsNullOrEmpty())
                 {
-                    Id = g.Id,
-                    IsDeleted = g.IsDeleted,
-                    TenantId = g.TenantId,
-                    LstfinInsUniqueNumbers = g.LstfinInsUniqueNumbers,
-                    blDate = g.blDate,
-                    gdNumber = g.gdNumber,
-                    totalDeclaredValue = g.totalDeclaredValue,
-                    GDDate = g.GDDate,
+                    var fisInGd = context.Database
+                                         .SqlQuery<FisInGdView>(FormattableStringFactory.Create($"select id,LstfinInsUniqueNumbers from [FIsInGoodsDeclarations] where TenantId={TenantId}"))
+                                         .ToList().Where(x => fis_gds.fis.Contains(x.LstfinInsUniqueNumbers)).Select(x => x.id).ToList();
 
-                }).ToList();
+                    rawResult.AddRange(context.GoodsDeclarations
+                            .Where(g => fisInGd.Contains(g.Id))
+                            .Select(g => new
+                            {
+                                g.GDDate,
+                                g.Id,
+                                g.IsDeleted,
+                                TenantId = g.TenantId,
+                                g.LstfinInsUniqueNumbers,
+                                g.blDate,
+                                g.gdNumber,
+                                g.totalDeclaredValue
+                            })
+                            .ToList());
+
+                    result = rawResult.Select(g => new GoodsDeclaration
+                    {
+                        Id = g.Id,
+                        IsDeleted = g.IsDeleted,
+                        TenantId = g.TenantId,
+                        LstfinInsUniqueNumbers = g.LstfinInsUniqueNumbers,
+                        blDate = g.blDate,
+                        gdNumber = g.gdNumber,
+                        totalDeclaredValue = g.totalDeclaredValue,
+                        GDDate = g.GDDate,
+
+                    }).ToList();
+                }
                 return result;
             }
             catch (Exception ex)
@@ -282,13 +280,19 @@ namespace ExportOverDueFileUploader.DBHelper
 
         public static int RemoveDublicateGds(long FileAuditId)
         {
-            var context = new ExportOverDueContext();
-      //      var Query = $"WITH rankedgoodsdeclarations AS (\r\n  SELECT \r\n    id, \r\n    gdnumber, \r\n    row_number() OVER (\r\n      partition BY gdnumber \r\n      ORDER BY \r\n        transmission_datetime DESC\r\n    ) AS rownum \r\n  FROM \r\n    goodsdeclaration \r\n  WHERE \r\n    message_id IN (\r\n      SELECT \r\n        message_id \r\n      FROM \r\n        goodsdeclaration \r\n      WHERE \r\n
-      //      LIKE 'RESPONSE' \r\n        AND status_code LIKE '200' \r\n    ) \r\n    AND direction LIKE 'REQUEST' \r\n    AND lstfininsuniquenumbers IS NOT NULL \r\n    \r\n) \r\nDELETE FROM \r\n  goodsdeclaration \r\nWHERE \r\n  id NOT IN (\r\n    select \r\n      id \r\n    from \r\n      rankedgoodsdeclarations \r\n    where \r\n      rownum = 1\r\n  ) \r\n";
-            //var Query = $"WITH RankedGoodsDeclarations AS (\r\n    SELECT \r\n        Id,\r\n        gdNumber,\r\n        ROW_NUMBER() OVER (PARTITION BY gdnumber ORDER BY TRANSMISSION_DATETIME DESC) AS RowNum\r\n    FROM \r\n        goodsdeclaration \r\n    WHERE  \r\n        message_id IN (\r\n            SELECT MESSAGE_ID \r\n            FROM GoodsDeclaration \r\n            WHERE DIRECTION LIKE 'RESPONSE' \r\n            AND STATUS_CODE LIKE '200'\r\n\t\t\tand FileAuditId = {FileAuditId}\r\n        ) \r\n        AND DIRECTION LIKE 'REQUEST' \r\n        AND LstfinInsUniqueNumbers IS NOT NULL and FileAuditId = {FileAuditId}\r\n)delete from GoodsDeclaration where id  not in (\r\nSELECT \r\n    Id\r\nFROM \r\n    RankedGoodsDeclarations\r\nWHERE \r\n    RowNum = 1) and FileAuditId = {FileAuditId};\r\n\t";
-            var Query = $"EXEC DeleteDuplicateGoodsDeclarations @FileAuditId = {FileAuditId}";
-            var result = context.Database.ExecuteSqlRaw(Query);
-            return result;
+            try
+            {
+
+                var context = new ExportOverDueContext();
+                var Query = $"EXEC DeleteDuplicateGoodsDeclarationsNew @FileAuditId = {FileAuditId}";
+                var result = context.Database.ExecuteSqlRaw(Query);
+                return result;
+            }
+            catch(Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error RemoveDublicateGds Data", ex.Message);
+                return 0;
+            }
 
         }
 

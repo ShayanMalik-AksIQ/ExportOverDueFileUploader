@@ -48,7 +48,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         //                    if (FiData.lcData != null && FiData.lcData != "null")
         //                    {
         //                        DateTime gdDate = gd.GDDate.Value;
-        //                        if (!gd.blDate.IsNullOrEmpty())
+        //                        if (false)
         //                        {
         //                            int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
         //                            if (x > 0)
@@ -71,7 +71,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         //                    if (FiData.contractCollectionData != null && FiData.contractCollectionData != "null")
         //                    {
         //                        DateTime gdDate = gd.GDDate.Value;
-        //                        if (!gd.blDate.IsNullOrEmpty())
+        //                        if (false)
         //                        {
         //                            int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
         //                            if (x > 0)
@@ -95,7 +95,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         //                    else if (FiData.modeOfPayment == "306")
         //                    {
         //                        DateTime gdDate = gd.GDDate.Value;
-        //                        if (!gd.blDate.IsNullOrEmpty())
+        //                        if (false)
         //                        {
         //                            int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
         //                            if (x > 0)
@@ -118,7 +118,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         //                    else if (FiData.modeOfPayment == "305")
         //                    {
         //                        DateTime gdDate = gd.GDDate.Value;
-        //                        if (!gd.blDate.IsNullOrEmpty())
+        //                        if (false)
         //                        {
         //                            int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
         //                            if (x > 0)
@@ -210,7 +210,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 if (FiData.lcData != null && FiData.lcData != "null")
                                 {
                                     DateTime gdDate = gd.GDDate.Value;
-                                    if (!gd.blDate.IsNullOrEmpty())
+                                    if (false)
                                     {
                                         int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                         if (x > 0)
@@ -233,7 +233,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 if (FiData.contractCollectionData != null && FiData.contractCollectionData != "null")
                                 {
                                     DateTime gdDate = gd.GDDate.Value;
-                                    if (!gd.blDate.IsNullOrEmpty())
+                                    if (false)
                                     {
                                         int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                         if (x > 0)
@@ -257,7 +257,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 else if (FiData.modeOfPayment == "306")
                                 {
                                     DateTime gdDate = gd.GDDate.Value;
-                                    if (!gd.blDate.IsNullOrEmpty())
+                                    if (false)
                                     {
                                         int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                         if (x > 0)
@@ -281,7 +281,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 //else if (FiData.modeOfPayment == "305")
                                 //{
                                 //    DateTime gdDate = gd.GDDate.Value;
-                                //    if (!gd.blDate.IsNullOrEmpty())
+                                //    if (false)
                                 //    {
                                 //        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                 //        if (x > 0)
@@ -307,7 +307,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 FiData = lstfis.Where(x => x.openAccountGdNumber == gd.gdNumber).FirstOrDefault();
 
                                 DateTime gdDate = gd.GDDate.Value;
-                                if (!gd.blDate.IsNullOrEmpty())
+                                if (false)
                                 {
                                     int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                     if (x > 0)
@@ -405,7 +405,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 if (FiData.lcData != null && FiData.lcData != "null")
                                 {
                                     DateTime gdDate = gd.GDDate.Value;
-                                    if (!gd.blDate.IsNullOrEmpty())
+                                    if (false)
                                     {
                                         int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                         if (x > 0)
@@ -428,7 +428,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 if (FiData.contractCollectionData != null && FiData.contractCollectionData != "null")
                                 {
                                     DateTime gdDate = gd.GDDate.Value;
-                                    if (!gd.blDate.IsNullOrEmpty())
+                                    if (false)
                                     {
                                         int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                         if (x > 0)
@@ -452,7 +452,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 else if (FiData.modeOfPayment == "306")
                                 {
                                     DateTime gdDate = gd.GDDate.Value;
-                                    if (!gd.blDate.IsNullOrEmpty())
+                                    if (false)
                                     {
                                         int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                         if (x > 0)
@@ -476,7 +476,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 //else if (FiData.modeOfPayment == "305")
                                 //{
                                 //    DateTime gdDate = gd.GDDate.Value;
-                                //    if (!gd.blDate.IsNullOrEmpty())
+                                //    if (false)
                                 //    {
                                 //        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                 //        if (x > 0)
@@ -502,7 +502,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 FiData = lstfis.Where(x => x.openAccountGdNumber == gd.gdNumber).FirstOrDefault();
 
                                 DateTime gdDate = gd.GDDate.Value;
-                                if (!gd.blDate.IsNullOrEmpty())
+                                if (false)
                                 {
                                     int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
                                     if (x > 0)
@@ -550,7 +550,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
             }
             catch (Exception ex)
             {
-                Seriloger.LoggerInstance.Information($"Error In Sync New Gds :{ex.Message}");
+                Seriloger.LoggerInstance.Error($"Error In Sync New Gds :{ex.Message}");
                 return $"Error :{ex.Message}";
             }
         }
