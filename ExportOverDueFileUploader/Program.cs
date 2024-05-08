@@ -5,10 +5,13 @@ using ExportOverDueFileUploader.DataImporter;
 using ExportOverDueFileUploader.DBHelper;
 using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.MatuirtyBO;
+using ExportOverDueFileUploader.Modles.JsonHelper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using Serilog;
 using System;
 using System.Data;
@@ -26,14 +29,14 @@ internal class Program
 
         try
         {
-
+            
 
             IConfigurationRoot configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json")
                 .Build();
-            //AppSettings.ConnectionString = "Server=DESKTOP-O10K6M5; Database=ExportOverDue_JS_QA_DuplicateTest; Trusted_Connection=True; TrustServerCertificate=True;Command Timeout=16000;";
-            AppSettings.ConnectionString = configuration.GetConnectionString("DefaultConnection");
+            //AppSettings.ConnectionString = configuration.GetConnectionString("DefaultConnection");
+            AppSettings.ConnectionString = "Server=DESKTOP-O10K6M5; Database=ExportOverDueJS_AllData; Trusted_Connection=True; TrustServerCertificate=True;Command Timeout=16000;";
             AppSettings.TenantId = int.Parse(configuration.GetConnectionString("TenantId"));
             AppSettings.BatchSize = int.Parse(configuration.GetConnectionString("BatchSize"));
 

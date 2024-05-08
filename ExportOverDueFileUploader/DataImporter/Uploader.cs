@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.InkML;
+﻿using Azure.Core;
+using DocumentFormat.OpenXml.InkML;
 using DocumentFormat.OpenXml.Office2010.Excel;
 using ExportOverDueFileUploader.DBHelper;
 using ExportOverDueFileUploader.DBmodels;
@@ -15,6 +16,7 @@ using System.Security.Authentication;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static ExportOverDueFileUploader.DataImporter.GdImporter;
 
 namespace ExportOverDueFileUploader.DataImporter
 {
@@ -41,9 +43,9 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 Seriloger.LoggerInstance.Information("Export Over Due Uploader Execution Begins ......");
                 ExportOverDueContext context = new ExportOverDueContext();
-                var maxLoadingOrder = context.RequestStatuses.Where(x => x.Module.ModuleName.ToLower() == "Setups".ToLower()).Select(x=>x.LoadingOrder).Max();
+                var maxLoadingOrder = context.RequestStatuses.Where(x => x.Module.ModuleName.ToLower() == "Setups".ToLower()).Select(x => x.LoadingOrder).Max();
 
-                var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted == false && x.RequestStatus.LoadingOrder==maxLoadingOrder).ToList();//aproved only
+                var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted == false && x.RequestStatus.LoadingOrder == maxLoadingOrder).ToList();//aproved only
                 if (lstFileTypes.IsNullOrEmpty())
                 {
                     Seriloger.LoggerInstance.Error("Error:No File Type In DB..");
@@ -56,7 +58,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     var Files = GetFileNamesInFolder(BasePath);
                     if (Files == null)
                     {
-                        Seriloger.LoggerInstance.Error($"File:{fileType.Name} Folder:{fileType.FilePath} In Progress");
+                        Seriloger.LoggerInstance.Information($"File:{fileType.Name} Folder:{fileType.FilePath} In Progress");
                     }
                     foreach (var file in Files)
                     {
@@ -64,6 +66,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         try
                         {
                             string FileJsonData = string.Empty;
+                            Seriloger.LoggerInstance.Error($"FileTyoe:{fileType.Name} File:{file} Reading In Progress....");
                             if (file.EndsWith(".xlsx") || file.EndsWith(".xls"))
                             {
                                 FileJsonData = FileReader.ReadAndValidateExcelFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
@@ -96,25 +99,20 @@ namespace ExportOverDueFileUploader.DataImporter
                                     auditTrail.Success = true;
                                     if (fileType.Description == "GoodsDeclaration")
                                     {
-
                                         LinkGdToFI.SyncNewGd(auditTrail.Id, filters);
                                     }
                                     if (fileType.Description == "FinancialInstrument")
                                     {
-
                                         LinkGdToFI.SyncNewFi(auditTrail.Id, filters);
                                     }
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Sync Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
-
                                 }
                                 else
                                 {
                                     auditTrail.Success = false;
                                     auditTrail.Remarks = $"{FileJsonData}";
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Hadders MissMached {Files.IndexOf(file) + 1}/{Files.Count}");
-
                                 }
-
                             }
                             catch (Exception ex)
                             {
@@ -124,10 +122,8 @@ namespace ExportOverDueFileUploader.DataImporter
                             }
                             finally
                             {
-
                                 try
                                 {
-                                    
                                     ExportOverDueContext context1 = new ExportOverDueContext();
                                     context1.FileImportAuditTrails.Update(auditTrail);
                                     context1.SaveChanges();
@@ -139,9 +135,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
                                 }
                             }
-
                         }
-
                         catch (Exception ex)
                         {
                             Seriloger.LoggerInstance.Error(ex.Message);
@@ -177,7 +171,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 context.SaveChanges();
                 if (dataTable != null)
                 {
-                    var filters = ImportData(null, fileName,auditTrail.Id, EntityName, dataTable);
+                    var filters = ImportData(null, fileName, auditTrail.Id, EntityName, dataTable);
                     Seriloger.LoggerInstance.Information($"Bca file:{fileName} Db Export Sucess");
                     auditTrail.Remarks = "Success";
                     auditTrail.Success = true;
@@ -222,8 +216,10 @@ namespace ExportOverDueFileUploader.DataImporter
 
 
 
-        public NewFiGdFilterModel ImportData(string jsondata, string EntityName,long FileID, string fileName,DataTable dataTable = null)
+        public NewFiGdFilterModel ImportData(string jsondata, string EntityName, long FileID, string fileName, DataTable dataTable = null)
         {
+            cobReturn result = new cobReturn();
+            List<string?> msgIds = new List<string?>(); 
             if (TableNames.Contains(EntityName))
             {
                 try
@@ -240,13 +236,24 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     if (EntityName == "FinancialInstrument")
                     {
-                        
+
                         DataTable BcaData = data.Select("TRANSACTION_TYPE = 1526 AND RESPONSE_CODE = 200").CopyToDataTable();
                         data = data.Select("TRANSACTION_TYPE = 1524 AND RESPONSE_CODE = 200").CopyToDataTable();
                         if (BcaData != null && BcaData.Rows.Count > 0)
                         {
                             Executeion(BcaData, "BcaData", fileName);
                         }
+                        if (data.Rows.Count == 0)
+                        {
+                            return null;
+                        }
+
+                    }
+                    if (EntityName == "GoodsDeclaration")
+                    {
+
+                        data = data.Select("MESSAGE_TYPE = 307 OR MESSAGE_TYPE = 102").CopyToDataTable();
+                      // data = data.Select("DIRECTION = 'REQUEST'").CopyToDataTable();
                         if (data.Rows.Count == 0)
                         {
                             return null;
@@ -275,6 +282,11 @@ namespace ExportOverDueFileUploader.DataImporter
                         data.Columns.Add("I_D");
                     }
                     int tenantId = AppSettings.TenantId;
+                     if (EntityName == "GoodsDeclaration")
+                    {
+                        msgIds = ExtractOkMessageId(data);
+                        
+                    }
                     foreach (DataRow _row in data.Rows)
                     {
                         if (data.Columns.Contains("ID"))
@@ -291,12 +303,28 @@ namespace ExportOverDueFileUploader.DataImporter
                         _row["CreatorUserId"] = null;
                         _row["FileAuditId"] = FileID;
 
+
                         if (EntityName == "GoodsDeclaration")
                         {
-                            var fis = GdImporter.LoadGdInfoColoums(_row);
-                            if (fis != null)
+                            if ((!_row["MESSAGE_ID"].ToString().IsNullOrEmpty()) && _row["DIRECTION"].ToString() == "REQUEST" && msgIds.Contains(_row["MESSAGE_ID"].ToString()) && _row["MESSAGE_TYPE"].ToString() != "101")
                             {
-                                newGdFis.AddRange(fis);
+                                _row["STATUS_CODE"] = "OK";
+
+                                List<string> fis = new List<string>();
+                                if (_row["MESSAGE_TYPE"].ToString() == "307")
+                                {
+                                    result = GdImporter.LoadCobGdInfoColoums(_row);
+                                    fis = result?.fiNumbers;
+
+                                }
+                                else
+                                {
+                                    fis = GdImporter.LoadGdInfoColoums(_row);
+                                }
+                                if (!fis.IsNullOrEmpty())
+                                {
+                                    newGdFis.AddRange(fis);
+                                }
                             }
 
                         }
@@ -313,11 +341,26 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         data.Columns.Remove("ID");
                     }
+                    if (result?.aditionalRows?.Count() > 0)
+                    {
+                        DataTable cobData = data.Clone();
+                        foreach (DataRow row in result?.aditionalRows)
+                        {
+                            // Extract values from the DataRow
+                            object[] rowArray = row.ItemArray;
 
-
+                            // Add the rowArray to cobData
+                            cobData.Rows.Add(rowArray);
+                        }
+                        data.Merge(cobData);
+                    }
+                    if (EntityName == "GoodsDeclaration")
+                    {
+                        data = data.Select("STATUS_CODE = 'OK'").CopyToDataTable();
+                    }
                     BulkInsert(data, EntityName);
 
-                    CustomRepo.RemoveDublicateGds(FileID);
+                    // CustomRepo.RemoveDublicateGds(FileID);
                     NewFiGdFilterModel filter = new NewFiGdFilterModel();
                     if (EntityName == "GoodsDeclaration")
                     {
@@ -438,11 +481,24 @@ namespace ExportOverDueFileUploader.DataImporter
 
 
             }
+            var xx = fis.Select(x => x != null || x != "")
+                  .Distinct()
+                 .Select(b => b.ToString())
+                .ToList();
+
+            var y = gds.Select(x => x != null || x != "")
+                 .Distinct()
+                .Select(b => b.ToString())
+               .ToList();
 
             return new NewFiGdFilterModel
             {
-                fis = fis,
-                gds = gds
+                fis = fis.Where(x => x != null && x != "")
+                         .Distinct()
+                         .ToList(),
+                gds = gds.Where(x => x != null && x != "")
+                                  .Distinct()
+                                  .ToList()
             };
         }
 
@@ -465,14 +521,38 @@ namespace ExportOverDueFileUploader.DataImporter
                 }
             }
 
+            //var x = fis.Where(x => x != null && x != "")
+            //             .Distinct()
+            //             .ToList();
+            //var y = gdNumberList.Where(x => x != null && x != "")
+            //                      .Distinct()
+            //                      .ToList();
+
             return new NewFiGdFilterModel
             {
-                gds = gdNumberList,
-                fis = fis
+                fis = fis.Where(x => x != null && x != "")
+                         .Distinct()
+                         .ToList(),
+                gds = gdNumberList.Where(x => x != null && x != "")
+                                  .Distinct()
+                                  .ToList()
             };
         }
 
 
+        private List<string?> ExtractOkMessageId(DataTable dataTable)
+        {
+            List<string?> msgIds = new List<string?>();
+
+            foreach (DataRow row in dataTable.Rows)
+            {
+                if(row["DIRECTION"].ToString()== "RESPONSE" && row["STATUS_CODE"].ToString() == "200" && row["MESSAGE_TYPE"].ToString()!="101")
+                {
+                    msgIds.Add(row["MESSAGE_ID"].ToString());
+                }
+            }
+            return msgIds;
+        }
 
     }
 

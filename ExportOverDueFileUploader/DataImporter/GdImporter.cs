@@ -1,7 +1,9 @@
 ﻿using DocumentFormat.OpenXml.Drawing.Charts;
 using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.Modles.JsonHelper;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -94,6 +96,90 @@ namespace ExportOverDueFileUploader.DataImporter
 
         }
 
+        public class  cobReturn{
+
+            public List<string> fiNumbers { get; set; }
+            public List<DataRow> aditionalRows { get; set; }
+            }
+
+        public static cobReturn LoadCobGdInfoColoums(DataRow _row)
+        {
+            try
+            {
+                if (!_row["PAYLOAD"].ToString().IsNullOrEmpty())
+                {
+                    List<string> fiNumber = new List<string>();
+                    List<DataRow> dataRows = new List<DataRow>();
+                     var x = _row["PAYLOAD"]?.ToString();
+                    cobPayLoad payload = JsonConvert.DeserializeObject<cobPayLoad>(_row["PAYLOAD"]?.ToString());
+                    if (payload?.data?.gdInfo.Count()>1)
+                    {
+
+                    }
+                    var CountGds = payload?.data?.gdInfo.Count();
+                        int i = 0;
+                    foreach (var gd in payload?.data?.gdInfo)
+                    {
+                        if (gd != null)
+                        {
+                            List<string> lstFiNumber = new List<string>();
+                            List<string> lstModeOfPayment = new List<string>();
+                            if (gd?.financialInfo != null)
+                            {
+                                lstFiNumber.Add($"{gd.financialInfo?.finInsUniqueNumber?.ToString()}({gd.financialInfo.modeOfPayment?.ToString()})");
+
+                                _row["totalDeclaredValue"] = gd.financialInfo.totalDeclaredValue;
+                                _row["CurrencyCode"] = gd.financialInfo.currency?.ToString();
+                                _row["exchangeRate"] = gd?.financialInfo.exchangeRate ?? 0;
+
+                                if (gd.financialInfo?.finInsUniqueNumber != null)
+                                {
+                                    fiNumber.Add(gd?.financialInfo?.finInsUniqueNumber?.ToString());
+                                }
+
+                            }
+                            _row["gdNumber"] = gd.gdNumber?.ToString();
+                            _row["gdStatus"] = gd.gdStatus?.ToString();
+                            _row["consigneeName"] = gd.consignorConsigneeInfo?.consigneeName.ToString();
+                            _row["LstfinInsUniqueNumbers"] = lstFiNumber.Count > 0 ? string.Join(",", lstFiNumber) : null;
+                            _row["blDate"] = gd.blawbDate?.ToString();
+                            _row["ShipmentDate"] = gd.blawbDate?.ToString();
+                            _row["itemInformationJson"] = gd.itemInformation != null ? JsonConvert.SerializeObject(gd.itemInformation) : null;
+                            _row["ShipmentCity"] = gd.generalInformation?.destinationCountry;//ask
+                            _row["blDate"] = gd.blawbDate?.ToString();
+
+                            if (gd.gdNumber != null)
+                            {
+                                var lstgddate = gd.gdNumber?.ToString().Split('-').ToList().Skip(3).Take(3).ToList();
+                                _row["GDDate"] = new DateTime(Convert.ToInt16(lstgddate[2]), Convert.ToInt16(lstgddate[1]), Convert.ToInt16(lstgddate[0]));
+                            }
+                            i++;
+                            if (i != CountGds - 1)
+                            {
+                                dataRows.Add(DeepCopyDataRow(_row));
+                            }
+                            }
+                    }
+                    return new cobReturn
+                    {
+                        fiNumbers=fiNumber,
+                        aditionalRows= dataRows
+
+                    };
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                
+                return null;
+            }
+
+        }
+
         public static System.Data.DataTable FilterGds(System.Data.DataTable gds)
         {
             // Create a new DataTable to store the filtered and processed data
@@ -145,9 +231,25 @@ namespace ExportOverDueFileUploader.DataImporter
             }
             catch (Exception ex)
             {
-                var x = dateString;
+                
                 return null;
             }
+        }
+
+
+        public static DataRow DeepCopyDataRow(DataRow originalRow)
+        {
+            // Create a new DataRow with the same schema as the original
+            System.Data.DataTable table = originalRow.Table;
+            DataRow newRow = table.NewRow();
+
+            // Copy each column value from the original DataRow to the new DataRow
+            foreach (DataColumn column in table.Columns)
+            {
+                newRow[column.ColumnName] = originalRow[column.ColumnName];
+            }
+
+            return newRow;
         }
 
 

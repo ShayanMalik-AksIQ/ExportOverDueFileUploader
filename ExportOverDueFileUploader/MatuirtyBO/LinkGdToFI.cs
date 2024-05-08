@@ -168,7 +168,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         {
             try
             {
-                Seriloger.LoggerInstance.Error($" Sync New Gds In Process.... :");
+                Seriloger.LoggerInstance.Information($" Sync New Gds In Process.... :");
                 ExportOverDueContext context = new ExportOverDueContext();
                 List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
                 List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(AppSettings.TenantId, fileId).ToList();//gd that newly came in 

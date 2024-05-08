@@ -25,19 +25,24 @@ namespace ExportOverDueFileUploader.Modles.JsonHelper
         public string signature { get; set; }
     }
 
+   
+
     public class Data
     {
+
+        public List<Data>? gdInfo { get; set; }
+        
         public string gdNumber { get; set; }
         public string gdStatus { get; set; }
         public string consignmentCategory { get; set; }
 
         public string blAwbDate { get; set; }
         // Add other properties as needed
-        public ConsignorConsigneeInfo consignorConsigneeInfo { get; set; }
-        public FinancialInformation financialInformation { get; set; }
-        public GeneralInformation generalInformation { get; set; }
-        public FinancialInfo financialInfo { get; set; }
-        public object itemInformation { get; set; }
+        public ConsignorConsigneeInfo? consignorConsigneeInfo { get; set; }
+        public FinancialInformation? financialInformation { get; set; }
+        public GeneralInformation? generalInformation { get; set; }
+        public FinancialInfo? financialInfo { get; set; }
+        public object? itemInformation { get; set; }
     }
 
     public class ConsignorConsigneeInfo
