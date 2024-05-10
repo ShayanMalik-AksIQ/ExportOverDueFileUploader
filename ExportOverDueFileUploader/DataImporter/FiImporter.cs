@@ -29,6 +29,20 @@ namespace ExportOverDueFileUploader.DataImporter
             "FiCertifcationdate"
         };
 
+        //public static List<string> CobFiColoums = new List<string>
+        //{
+          
+        //    "openAccountGdNumber",
+        //    "modeOfPayment",
+        //    "ExporterCity",
+        //    "ExporterAddress",
+        //    "ExporterName",
+        //    "ExporterRegNo",
+        //    "ExporterNTN",
+        //    "Days",
+        //    "FiCertifcationdate"
+        //};
+
         public static List<string> BcaColoums = new List<string>
         {
             "RealizationInfoJson",
@@ -80,6 +94,10 @@ namespace ExportOverDueFileUploader.DataImporter
                     else
                     {
                         _row["FiCertifcationdate"] = null;
+                    }
+                    if(_row["TRANSACTION_TYPE"].ToString().IsNullOrEmpty() && _row["CREATED_DATETIME"].ToString().IsNullOrEmpty())
+                    {
+                        _row["TRANSACTION_TYPE"] = "1524";
                     }
                 }
 

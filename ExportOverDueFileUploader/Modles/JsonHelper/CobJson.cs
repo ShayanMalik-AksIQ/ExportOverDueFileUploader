@@ -51,9 +51,13 @@ public class ContractCollectionData
         public string exporterIban { get; set; }
         public string modeOfPayment { get; set; }
         public string finInsUniqueNumber { get; set; }
-        public ContractCollectionData contractCollectionData { get; set; }
-        public PaymentInformation paymentInformation { get; set; }
-        public List<ItemInformation> itemInformation { get; set; }
+        public Openaccountdata openAccountData { get; set; }
+        public Cashmargin cashMargin { get; set; }
+        public Contractcollectiondata contractCollectionData { get; set; }
+        public Lcdata lcData { get; set; }
+        public Paymentinformation paymentInformation { get; set; }
+        public Financialtraninformation financialTranInformation { get; set; }
+        public string remarks { get; set; }
     }
 
     public class ItemInformationGdInfo

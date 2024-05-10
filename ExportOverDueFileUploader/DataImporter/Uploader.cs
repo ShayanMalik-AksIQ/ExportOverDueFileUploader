@@ -4,7 +4,9 @@ using DocumentFormat.OpenXml.Office2010.Excel;
 using ExportOverDueFileUploader.DBHelper;
 using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.MatuirtyBO;
+using ExportOverDueFileUploader.Modles.JsonHelper;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
@@ -60,7 +62,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         Seriloger.LoggerInstance.Error($"Folder:{fileType.FilePath} has No Files");
                         continue;
-                        
+
                     }
                     foreach (var file in Files)
                     {
@@ -214,7 +216,8 @@ namespace ExportOverDueFileUploader.DataImporter
         public NewFiGdFilterModel ImportData(string jsondata, string EntityName, long FileID, string fileName, DataTable dataTable = null)
         {
             cobReturn result = new cobReturn();
-            List<string?> msgIds = new List<string?>(); 
+            List<FinancialInstrumentInfo> lstCobFis = new List<FinancialInstrumentInfo>();
+            List<string?> msgIds = new List<string?>();
             if (TableNames.Contains(EntityName))
             {
                 try
@@ -229,7 +232,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         data = dataTable;
                     }
-                    if (EntityName == "FinancialInstrument")
+                    if (EntityName == "FinancialInstrument" && dataTable == null)
                     {
 
                         DataTable BcaData = data.Select("TRANSACTION_TYPE = 1526 AND RESPONSE_CODE = 200").CopyToDataTable();
@@ -246,7 +249,8 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     if (EntityName == "GoodsDeclaration")
                     {
-                        data = data.Select("MESSAGE_TYPE = 307 OR MESSAGE_TYPE = 102").CopyToDataTable();
+                        data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
+                        data = data.Select("DIRECTION = 'REQUEST'").CopyToDataTable();
                         if (data.Rows.Count == 0)
                         {
                             return null;
@@ -260,11 +264,17 @@ namespace ExportOverDueFileUploader.DataImporter
                     if (EntityName == "GoodsDeclaration")
                     {
                         AddColumns(data, GdImporter.GdColumns);
-                        msgIds = ExtractOkMessageId(data);
                     }
                     else if (EntityName == "FinancialInstrument")
                     {
+
                         AddColumns(data, FiImporter.FiColoums);
+                        if (dataTable != null)
+                        {
+
+                            data.Columns.Add("CREATED_DATETIME");
+                            data.Columns.Add("TRANSACTION_TYPE");
+                        }
                     }
                     else if (EntityName == "BcaData")
                     {
@@ -275,7 +285,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         data.Columns.Add("I_D");
                     }
                     int tenantId = AppSettings.TenantId;
-                    
+
                     foreach (DataRow _row in data.Rows)
                     {
                         if (data.Columns.Contains("ID"))
@@ -295,30 +305,35 @@ namespace ExportOverDueFileUploader.DataImporter
 
                         if (EntityName == "GoodsDeclaration")
                         {
-                            if ((!_row["MESSAGE_ID"].ToString().IsNullOrEmpty()) && _row["DIRECTION"].ToString() == "REQUEST" && msgIds.Contains(_row["MESSAGE_ID"].ToString()) && _row["MESSAGE_TYPE"].ToString() != "101")
-                            {
-                                _row["STATUS_CODE"] = "OK";
 
-                                List<string> fis = new List<string>();
-                                if (_row["MESSAGE_TYPE"].ToString() == "307")
+
+                            List<string> fis = new List<string>();
+                            if (_row["MESSAGE_TYPE"].ToString() == "307")
+                            {
+                                result = GdImporter.LoadCobGdInfoColoums(_row);
+                                fis = result?.fiNumbers;
+                                if (result?.cobFi != null)
                                 {
-                                    result = GdImporter.LoadCobGdInfoColoums(_row);
-                                    fis = result?.fiNumbers;
-                                }
-                                else
-                                {
-                                    fis = GdImporter.LoadGdInfoColoums(_row);
-                                }
-                                if (!fis.IsNullOrEmpty())
-                                {
-                                    newGdFis.AddRange(fis);
+                                    lstCobFis.Add(result.cobFi);
                                 }
                             }
+                            else
+                            {
+                                fis = GdImporter.LoadGdInfoColoums(_row);
+                            }
+                            if (!fis.IsNullOrEmpty())
+                            {
+                                newGdFis.AddRange(fis);
+                            }
+
 
                         }
                         else if (EntityName == "FinancialInstrument")
                         {
                             FiImporter.LoadFIInfoColoums(_row);
+
+
+
                         }
                         else if (EntityName == "BcaData")
                         {
@@ -339,16 +354,31 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                         data.Merge(cobData);
                     }
-                    if (EntityName == "GoodsDeclaration")
+                    if (!lstCobFis.IsNullOrEmpty())
                     {
-                        data = data.Select("STATUS_CODE = 'OK'").CopyToDataTable();
-                    }
+                        DataTable cobFiTable = new DataTable();
+                        cobFiTable.Columns.Add("PAYLOAD", typeof(string));
+                        lstCobFis = lstCobFis
+                            .Where(x => !string.IsNullOrEmpty(x.finInsUniqueNumber)) // Filter out null or empty finInsUniqueNumber
+                            .GroupBy(x => x.finInsUniqueNumber)
+                            .Select(group => group.First())
+                            .ToList();
 
+                        foreach (var fi in lstCobFis)
+                        {
+                            var jsonString = JsonConvert.SerializeObject(fi);
+                            DataRow row = cobFiTable.NewRow();
+                            row["PAYLOAD"] = jsonString;
+                            cobFiTable.Rows.Add(row);
+                        }
+
+                        ImportData(null, "FinancialInstrument", FileID, fileName, cobFiTable);
+                    }
                     BulkInsert(data, EntityName);
 
-                    if(EntityName == "GoodsDeclaration")
+                    if (EntityName == "GoodsDeclaration")
                     {
-                        CustomRepo.RemoveDublicateGds(FileID);
+                        CustomRepo.RemoveDublicateGdsFileWise(FileID);
                     }
 
                     NewFiGdFilterModel filter = new NewFiGdFilterModel();
@@ -370,7 +400,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 }
             }
             else
-            { 
+            {
                 Seriloger.LoggerInstance.Error($"Incorrect Table Name ");
                 return null;
             }
@@ -522,7 +552,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
             foreach (DataRow row in dataTable.Rows)
             {
-                if(row["DIRECTION"].ToString()== "RESPONSE" && row["STATUS_CODE"].ToString() == "200" && row["MESSAGE_TYPE"].ToString()!="101")
+                if (row["DIRECTION"].ToString() == "RESPONSE" && row["STATUS_CODE"].ToString() == "200" && row["MESSAGE_TYPE"].ToString() != "101")
                 {
                     msgIds.Add(row["MESSAGE_ID"].ToString());
                 }

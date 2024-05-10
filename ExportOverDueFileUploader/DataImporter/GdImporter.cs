@@ -100,12 +100,15 @@ namespace ExportOverDueFileUploader.DataImporter
 
             public List<string> fiNumbers { get; set; }
             public List<DataRow> aditionalRows { get; set; }
-            }
+            public FinancialInstrumentInfo cobFi { get; set; }
+        }
 
         public static cobReturn LoadCobGdInfoColoums(DataRow _row)
         {
             try
             {
+                FinancialInstrumentInfo cobFi= new FinancialInstrumentInfo();
+
                 if (!_row["PAYLOAD"].ToString().IsNullOrEmpty())
                 {
                     List<string> fiNumber = new List<string>();
@@ -114,7 +117,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     cobPayLoad payload = JsonConvert.DeserializeObject<cobPayLoad>(_row["PAYLOAD"]?.ToString());
                     if (payload?.data?.gdInfo.Count()>1)
                     {
-
+                        
                     }
                     var CountGds = payload?.data?.gdInfo.Count();
                         int i = 0;
@@ -160,9 +163,15 @@ namespace ExportOverDueFileUploader.DataImporter
                             }
                             }
                     }
+
+                    if (payload?.data?.financialInstrumentInfo!=null)
+                    {
+                        cobFi = payload?.data?.financialInstrumentInfo;
+                    }
                     return new cobReturn
                     {
-                        fiNumbers=fiNumber,
+                        cobFi= cobFi,
+                        fiNumbers =fiNumber,
                         aditionalRows= dataRows
 
                     };
