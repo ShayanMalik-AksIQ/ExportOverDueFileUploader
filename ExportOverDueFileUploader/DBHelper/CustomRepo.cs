@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.InkML;
+﻿using DocumentFormat.OpenXml.Drawing.Diagrams;
+using DocumentFormat.OpenXml.InkML;
 using DocumentFormat.OpenXml.Office2010.CustomUI;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ExportOverDueFileUploader.DataImporter;
@@ -102,7 +103,7 @@ namespace ExportOverDueFileUploader.DBHelper
             {
                 var context = new ExportOverDueContext();
                 // var ids= context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE == "1524" && g.IsDeleted == false)
-                var rawResult = context.FinancialInstruments.Where(g => g.TenantId == TenantId  && g.IsDeleted == false && fis_gds.fis.Contains(g.finInsUniqueNumber))
+                var rawResult = context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.IsDeleted == false && fis_gds.fis.Contains(g.finInsUniqueNumber))
                                                             .Select(f => new
                                                             {
                                                                 f.Id,
@@ -278,31 +279,54 @@ namespace ExportOverDueFileUploader.DBHelper
 
 
 
-        public static int RemoveDublicateGdsFileWise(long FileAuditId)
+        //public static int RemoveDublicateGdsFileWise(long FileAuditId)
+        //{
+        //    try
+        //    {
+
+        //        var context = new ExportOverDueContext();
+        //        var Query = $"EXEC DeleteDuplicateGoodsDeclarationsFileWise @FileAuditId = {FileAuditId}";
+        //        var result = context.Database.ExecuteSqlRaw(Query);
+        //        return result;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Seriloger.LoggerInstance.Error("Error RemoveDublicateGds File Wise Data", ex.Message);
+        //        return 0;
+        //    }
+
+        //}
+        public static int RemoveDublicate(string Entity, long FileAuditId = 0)
         {
             try
             {
-
+                string Query="";
                 var context = new ExportOverDueContext();
-                var Query = $"EXEC DeleteDuplicateGoodsDeclarationsFileWise @FileAuditId = {FileAuditId}";
-                var result = context.Database.ExecuteSqlRaw(Query);
-                return result;
-            }
-            catch(Exception ex)
-            {
-                Seriloger.LoggerInstance.Error("Error RemoveDublicateGds File Wise Data", ex.Message);
-                return 0;
-            }
 
-        }
-        public static int RemoveDublicateGds()
-        {
-            try
-            {
+                if (Entity == "GoodsDeclaration")
+                {
+                    Query = $"EXEC DeleteDuplicateGoodsDeclarations";
+                    if (FileAuditId > 0)
+                    {
+                        Query = $"{Query}FileWise  @FileAuditId = {FileAuditId}";
+                    }
+                }
+                else if (Entity == "FinancialInstrument")
+                {
+                    Query = $"EXEC DeleteDuplicateFinancialInstrument";
+                    if (FileAuditId > 0)
+                    {
+                        Query = $"{Query}FileWise  @FileAuditId = {FileAuditId}";
+                    }
+                }
+                else
+                {
+                    return 0;
+                }
 
-                var context = new ExportOverDueContext();
-                var Query = $"EXEC DeleteDuplicateGoodsDeclarations";
+                
                 var result = context.Database.ExecuteSqlRaw(Query);
+                Seriloger.LoggerInstance.Information($"{Entity} of file id:{FileAuditId} dublication Removed ");
                 return result;
             }
             catch (Exception ex)
@@ -312,6 +336,23 @@ namespace ExportOverDueFileUploader.DBHelper
             }
 
         }
+        //public static int RemoveDublicateGds()
+        //{
+        //    try
+        //    {
+
+        //        var context = new ExportOverDueContext();
+        //        var Query = $"EXEC DeleteDuplicateGoodsDeclarations";
+        //        var result = context.Database.ExecuteSqlRaw(Query);
+        //        return result;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Seriloger.LoggerInstance.Error("Error RemoveDublicateGds Data", ex.Message);
+        //        return 0;
+        //    }
+
+        //}
 
         //public static List<GoodsDeclaration> GetGoodsDeclarationForV20Dates(long TenantId)
         //{

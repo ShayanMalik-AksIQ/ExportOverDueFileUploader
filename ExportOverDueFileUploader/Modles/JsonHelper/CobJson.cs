@@ -11,7 +11,7 @@ namespace ExportOverDueFileUploader.Modles.JsonHelper
     }
 
 
-public class ContractCollectionData
+    public class ContractCollectionData
     {
         public int advPayPercentage { get; set; }
         public int docAgainstPayPercentage { get; set; }

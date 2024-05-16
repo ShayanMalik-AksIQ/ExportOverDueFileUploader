@@ -18,6 +18,7 @@ using System.Security.Authentication;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using static ExportOverDueFileUploader.DataImporter.GdImporter;
 
 namespace ExportOverDueFileUploader.DataImporter
@@ -146,6 +147,9 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                     }
 
+                    CustomRepo.RemoveDublicate(fileType.Description);
+
+
                 }
 
             }
@@ -162,21 +166,29 @@ namespace ExportOverDueFileUploader.DataImporter
 
 
 
-        public void Executeion(DataTable dataTable, string fileName, string EntityName)
+        public void Executeion(DataTable dataTable, string EntityName, string fileName)
         {
             FileImportAuditTrail auditTrail = new FileImportAuditTrail();
             ExportOverDueContext context = new ExportOverDueContext();
             try
             {
-                long id = context.FileTypes.FirstOrDefault(x => x.Description == "BcaData").Id;
+                long id = context.FileTypes.FirstOrDefault(x => x.Description == EntityName).Id;
                 auditTrail.FileName = fileName;
                 auditTrail.FileTypeId = id;//
                 context.FileImportAuditTrails.Add(auditTrail);
                 context.SaveChanges();
                 if (dataTable != null)
                 {
-                    var filters = ImportData(null, fileName, auditTrail.Id, EntityName, dataTable);
-                    Seriloger.LoggerInstance.Information($"Bca file:{fileName} Db Export Sucess");
+                    var filters = ImportData(null, EntityName, auditTrail.Id, fileName, dataTable);
+                    if (EntityName == "GoodsDeclaration")
+                    {
+                        LinkGdToFI.SyncNewGd(auditTrail.Id, filters);
+                    }
+                    if (EntityName == "FinancialInstrument")
+                    {
+                        LinkGdToFI.SyncNewFi(auditTrail.Id, filters);
+                    }
+                    Seriloger.LoggerInstance.Information($"{EntityName} file:{fileName} Db Export Sucess");
                     auditTrail.Remarks = "Success";
                     auditTrail.Success = true;
 
@@ -191,7 +203,7 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 auditTrail.Success = false;
                 auditTrail.Remarks = $"{ex.Message}";
-                Seriloger.LoggerInstance.Error($"Error :{ex.Message} on  BCA file:{fileName} ");
+                Seriloger.LoggerInstance.Error($"Error :{ex.Message} on  {EntityName} file:{fileName} ");
             }
             finally
             {
@@ -203,7 +215,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     ExportOverDueContext context1 = new ExportOverDueContext();
                     context1.FileImportAuditTrails.Update(auditTrail);
                     context1.SaveChanges();
-                    Seriloger.LoggerInstance.Information($"Bca file:{fileName} Uploaded Sucess With Audit");
+                    Seriloger.LoggerInstance.Information($"{EntityName} file:{fileName} Uploaded Sucess With Audit");
                 }
                 catch (Exception ex)
                 {
@@ -232,11 +244,19 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         data = dataTable;
                     }
+                    DataTable BcaData = new DataTable();
                     if (EntityName == "FinancialInstrument" && dataTable == null)
                     {
-
-                        DataTable BcaData = data.Select("TRANSACTION_TYPE = 1526 AND RESPONSE_CODE = 200").CopyToDataTable();
-                        data = data.Select("TRANSACTION_TYPE = 1524 AND RESPONSE_CODE = 200").CopyToDataTable();
+                        var bca = data.Select("TRANSACTION_TYPE = '1526'");
+                        var fis = data.Select("TRANSACTION_TYPE = '1524'");
+                        if (bca.Count() != 0)
+                        {
+                            BcaData = bca.CopyToDataTable();
+                        }
+                        if (fis.Count() != 0)
+                        {
+                        data = fis.CopyToDataTable();
+                        }
                         if (BcaData != null && BcaData.Rows.Count > 0)
                         {
                             Executeion(BcaData, "BcaData", fileName);
@@ -354,9 +374,9 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                         data.Merge(cobData);
                     }
+                    DataTable cobFiTable = new DataTable();
                     if (!lstCobFis.IsNullOrEmpty())
                     {
-                        DataTable cobFiTable = new DataTable();
                         cobFiTable.Columns.Add("PAYLOAD", typeof(string));
                         lstCobFis = lstCobFis
                             .Where(x => !string.IsNullOrEmpty(x.finInsUniqueNumber)) // Filter out null or empty finInsUniqueNumber
@@ -371,15 +391,17 @@ namespace ExportOverDueFileUploader.DataImporter
                             row["PAYLOAD"] = jsonString;
                             cobFiTable.Rows.Add(row);
                         }
-
-                        ImportData(null, "FinancialInstrument", FileID, fileName, cobFiTable);
+                        //   Executeion(cobFiTable, "FinancialInstrument", fileName);
+                        // ImportData(null, "FinancialInstrument", FileID, fileName, cobFiTable);
                     }
                     BulkInsert(data, EntityName);
-
-                    if (EntityName == "GoodsDeclaration")
+                    CustomRepo.RemoveDublicate(EntityName,FileID);
+                    if (!lstCobFis.IsNullOrEmpty())
                     {
-                        CustomRepo.RemoveDublicateGdsFileWise(FileID);
+                        Executeion(cobFiTable, "FinancialInstrument", fileName);
+                        // ImportData(null, "FinancialInstrument", FileID, fileName, cobFiTable);
                     }
+                    
 
                     NewFiGdFilterModel filter = new NewFiGdFilterModel();
 
@@ -391,6 +413,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         filter = ExtractFilisterList(data);
                     }
+                   
                     return filter;
                 }
                 catch (Exception ex)
@@ -468,83 +491,99 @@ namespace ExportOverDueFileUploader.DataImporter
         }
         private NewFiGdFilterModel ExtractFiNumberFromNewGDs(DataTable dataTable)
         {
-            List<string> fis = new List<string>();
-            List<string> gds = new List<string>();
-
-            foreach (DataRow row in dataTable.Rows)
+            try
             {
+                List<string> fis = new List<string>();
+                List<string> gds = new List<string>();
 
-                string LstfinInsUniqueNumbers = row["LstfinInsUniqueNumbers"].ToString();
-                List<FiNumberAndMode> fiNumberAndModes = new List<FiNumberAndMode>();
-                if (LstfinInsUniqueNumbers != null && LstfinInsUniqueNumbers != "")
+                foreach (DataRow row in dataTable.Rows)
                 {
-                    foreach (var fi in LstfinInsUniqueNumbers.Split(","))
+
+                    string LstfinInsUniqueNumbers = row["LstfinInsUniqueNumbers"].ToString();
+                    List<FiNumberAndMode> fiNumberAndModes = new List<FiNumberAndMode>();
+                    if (LstfinInsUniqueNumbers != null && LstfinInsUniqueNumbers != "")
                     {
-                        var x = new FiNumberAndMode
+                        foreach (var fi in LstfinInsUniqueNumbers.Split(","))
                         {
-                            FiNumber = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value ?? null,
-                            ModeOFPayment = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
-                        };
-                        fis.Add(x.FiNumber);
-                        if (fi == "(305)")
-                        {
-                            if (row["gdNumber"] != null)
+                            var x = new FiNumberAndMode
                             {
-                                gds.Add(row["gdNumber"].ToString());
+                                FiNumber = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value ?? null,
+                                ModeOFPayment = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
+                            };
+                            fis.Add(x.FiNumber);
+                            if (fi == "(305)")
+                            {
+                                if (row["gdNumber"] != null)
+                                {
+                                    gds.Add(row["gdNumber"].ToString());
+                                }
                             }
                         }
                     }
-                }
 
+
+                }
+                var xx = fis.Select(x => x != null || x != "")
+                      .Distinct()
+                     .Select(b => b.ToString())
+                    .ToList();
+
+                var y = gds.Select(x => x != null || x != "")
+                     .Distinct()
+                    .Select(b => b.ToString())
+                   .ToList();
+
+                return new NewFiGdFilterModel
+                {
+                    fis = fis.Where(x => x != null && x != "")
+                             .Distinct()
+                             .ToList(),
+                    gds = gds.Where(x => x != null && x != "")
+                                      .Distinct()
+                                      .ToList()
+                };
+            }
+            catch
+            {
+                return new NewFiGdFilterModel();
 
             }
-            var xx = fis.Select(x => x != null || x != "")
-                  .Distinct()
-                 .Select(b => b.ToString())
-                .ToList();
-
-            var y = gds.Select(x => x != null || x != "")
-                 .Distinct()
-                .Select(b => b.ToString())
-               .ToList();
-
-            return new NewFiGdFilterModel
-            {
-                fis = fis.Where(x => x != null && x != "")
-                         .Distinct()
-                         .ToList(),
-                gds = gds.Where(x => x != null && x != "")
-                                  .Distinct()
-                                  .ToList()
-            };
         }
         private NewFiGdFilterModel ExtractFilisterList(DataTable dataTable)
         {
-            List<string> gdNumberList = new List<string>();
-            List<string> fis = new List<string>();
+            try
+            {
+                List<string> gdNumberList = new List<string>();
+                List<string> fis = new List<string>();
 
-            foreach (DataRow row in dataTable.Rows)
-            {
-                string gd = row["openAccountGdNumber"].ToString();
-                string fi = row["finInsUniqueNumber"].ToString();
-                if (gd != "")
+                foreach (DataRow row in dataTable.Rows)
                 {
-                    gdNumberList.Add(gd);
+                    string gd = row["openAccountGdNumber"].ToString();
+                    string fi = row["finInsUniqueNumber"].ToString();
+                    if (gd != "")
+                    {
+                        gdNumberList.Add(gd);
+                    }
+                    if (fi != "")
+                    {
+                        fis.Add(fi);
+                    }
                 }
-                if (fi != "")
+                return new NewFiGdFilterModel
                 {
-                    fis.Add(fi);
-                }
+                    fis = fis.Where(x => x != null && x != "")
+                             .Distinct()
+                             .ToList(),
+                    gds = gdNumberList.Where(x => x != null && x != "")
+                                      .Distinct()
+                                      .ToList()
+                };
             }
-            return new NewFiGdFilterModel
+            catch
             {
-                fis = fis.Where(x => x != null && x != "")
-                         .Distinct()
-                         .ToList(),
-                gds = gdNumberList.Where(x => x != null && x != "")
-                                  .Distinct()
-                                  .ToList()
-            };
+                return new NewFiGdFilterModel();
+
+            }
         }
         private List<string?> ExtractOkMessageId(DataTable dataTable)
         {
