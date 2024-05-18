@@ -231,6 +231,7 @@ namespace ExportOverDueFileUploader.DBHelper
                         })
                         .ToList();
                 if (!rawResult.IsNullOrEmpty())
+                //if (true)
                 {
                     var fisInGd = context.Database
                                          .SqlQuery<FisInGdView>(FormattableStringFactory.Create($"select id,LstfinInsUniqueNumbers from [FIsInGoodsDeclarations] where TenantId={TenantId}"))

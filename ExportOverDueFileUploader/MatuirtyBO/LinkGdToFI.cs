@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using ExportOverDueFileUploader.DBHelper;
 using ExportOverDueFileUploader.DataImporter;
 using Serilog;
+using DocumentFormat.OpenXml.VariantTypes;
 
 namespace ExportOverDueFileUploader.MatuirtyBO
 {
@@ -168,6 +169,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         {
             try
             {
+                int count = 0;
                 Seriloger.LoggerInstance.Information($" Sync New Gds In Process.... :");
                 ExportOverDueContext context = new ExportOverDueContext();
                 List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
@@ -333,6 +335,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             #endregion  If Mode of Payemnt 305
                             else
                             {
+                                count++;
                                 //GdV20Dates.Add(new GD_FI_Link()
                                 //{
                                 //    GdId = gd.Id,
@@ -350,6 +353,8 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     }
                     V20Dates.AddRange(GdV20Dates);
                 }
+                var ss = count;
+               // Console.WriteLine(ss);
                 CustomRepo.InsertFI_GD_Link(V20Dates);
                 return "Sucess";
             }

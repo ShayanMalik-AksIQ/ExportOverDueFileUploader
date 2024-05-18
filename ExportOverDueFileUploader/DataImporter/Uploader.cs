@@ -133,6 +133,7 @@ namespace ExportOverDueFileUploader.DataImporter
                                     context1.FileImportAuditTrails.Update(auditTrail);
                                     context1.SaveChanges();
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} {Files.IndexOf(file) + 1}/{Files.Count}  Uploaded Sucess With Audit");
+                                    Seriloger.LoggerInstance.Information($"-------------------------{file} Sucess---------------------------");
                                 }
                                 catch (Exception ex)
                                 {
@@ -269,7 +270,8 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     if (EntityName == "GoodsDeclaration")
                     {
-                        data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
+                        data = data.Select("MESSAGE_TYPE = '102'").CopyToDataTable();
+                        //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
                         data = data.Select("DIRECTION = 'REQUEST'").CopyToDataTable();
                         if (data.Rows.Count == 0)
                         {
@@ -325,8 +327,6 @@ namespace ExportOverDueFileUploader.DataImporter
 
                         if (EntityName == "GoodsDeclaration")
                         {
-
-
                             List<string> fis = new List<string>();
                             if (_row["MESSAGE_TYPE"].ToString() == "307")
                             {
@@ -345,8 +345,6 @@ namespace ExportOverDueFileUploader.DataImporter
                             {
                                 newGdFis.AddRange(fis);
                             }
-
-
                         }
                         else if (EntityName == "FinancialInstrument")
                         {
@@ -510,29 +508,33 @@ namespace ExportOverDueFileUploader.DataImporter
                                 FiNumber = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value ?? null,
                                 ModeOFPayment = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
                             };
-                            fis.Add(x.FiNumber);
+                            if(x!=null ||!x.FiNumber.IsNullOrEmpty())
+                            {
+
+                                fis.Add(x.FiNumber);
+                            }
                             if (fi == "(305)")
                             {
                                 if (row["gdNumber"] != null)
                                 {
+                                    var gdnum = row["gdNumber"].ToString();
+                                    if (gdnum.IsNullOrEmpty())
+                                    {
+
+                                    }
                                     gds.Add(row["gdNumber"].ToString());
                                 }
+                            }
+                            if (x == null || x.FiNumber.IsNullOrEmpty() && fi != "(305)")
+                            {
+
+                               
                             }
                         }
                     }
 
 
                 }
-                var xx = fis.Select(x => x != null || x != "")
-                      .Distinct()
-                     .Select(b => b.ToString())
-                    .ToList();
-
-                var y = gds.Select(x => x != null || x != "")
-                     .Distinct()
-                    .Select(b => b.ToString())
-                   .ToList();
-
                 return new NewFiGdFilterModel
                 {
                     fis = fis.Where(x => x != null && x != "")
