@@ -87,6 +87,8 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                         catch
                         {
+                            FiPayLoadJson payload1 = JsonConvert.DeserializeObject<FiPayLoadJson>(_row["PAYLOAD"]?.ToString());
+                            Console.WriteLine(payload1.finInsUniqueNumber);
                             _row["FiCertifcationdate"] = null;
                         }
 
@@ -104,6 +106,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
             catch
             {
+                //Console.WriteLine(_row["ResponceCode"]?.ToString());
                 return;
             }
 
@@ -131,8 +134,10 @@ namespace ExportOverDueFileUploader.DataImporter
                 }
 
             }
-            catch
+            catch(Exception ex)
             {
+                BCAPayLoad payload = JsonConvert.DeserializeObject<BCAPayLoad>(_row["PAYLOAD"]?.ToString());
+                Console.WriteLine(payload?.BcaUniqueIdNumber);
                 return;
             }
 

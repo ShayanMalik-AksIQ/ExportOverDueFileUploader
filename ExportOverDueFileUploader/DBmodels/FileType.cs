@@ -35,6 +35,7 @@ public partial class FileType
 
     public int HeaderRow { get; set; }
 
+    public string? ColumnRename { get; set; }
     public virtual ICollection<FileImportAuditTrail> FileImportAuditTrails { get; set; } = new List<FileImportAuditTrail>();
 
     public virtual RequestStatus? RequestStatus { get; set; }
