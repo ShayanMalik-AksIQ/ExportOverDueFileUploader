@@ -186,7 +186,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                 {
                     Seriloger.LoggerInstance.Information($"No Fis To Sync");
 
-                    return "No Fis";
+                    //return "No Fis";
                 }
 
                 foreach (var gd in lstgds)
@@ -317,7 +317,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                         gdDate = gd.BLDateVale.Value;
                                     }
                                 }
-                                gdDate = gdDate.AddDays(45);
+                                gdDate = gdDate.AddDays(45);// OpenAccount
                                 if (FiData != null)
                                 {
                                     GdV20Dates.Add(new GD_FI_Link()
@@ -328,6 +328,17 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                         MatruityDate = gdDate.ToString("dd-MMM-yyy"),
                                         _MatruityDate = gdDate
                                     }) ;
+                                }
+                                else 
+                                {
+                                    GdV20Dates.Add(new GD_FI_Link()
+                                    {
+                                        GdId = gd.Id,
+                                     //   FiId = FiData == null ? null : FiData.Id,
+                                        type = "Open Account",
+                                        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
+                                        _MatruityDate = gdDate
+                                    });
                                 }
 
 
@@ -353,8 +364,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     }
                     V20Dates.AddRange(GdV20Dates);
                 }
-                var ss = count;
-               // Console.WriteLine(ss);
                 CustomRepo.InsertFI_GD_Link(V20Dates);
                 return "Sucess";
             }
