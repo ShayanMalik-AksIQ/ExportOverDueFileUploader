@@ -39,6 +39,7 @@ namespace ExportOverDueFileUploader.DataImporter
             TableNames.Add("DocumentaryCollection");
             TableNames.Add("BcaData");
             TableNames.Add("ITRS_Data");
+            TableNames.Add("NtnConversion");
 
         }
         public void Executeion()
@@ -289,7 +290,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         data = data.Select("CollectionNumber <> '' OR TransactionRef <> ''").CopyToDataTable();
                     }
-                    if (EntityName != "ITRS_Data")
+                    if (EntityName != "ITRS_Data" && EntityName != "NtnConversion")
                     {
 
                         data.Columns.Add("CreationTime");
@@ -297,9 +298,9 @@ namespace ExportOverDueFileUploader.DataImporter
                         data.Columns.Add("CreatorUserId");
 
                     }
-                    else
+                    else if(!coloumRename.IsNullOrEmpty())
                     {
-                        ModifyDataTable(data, coloumRename.Split("||").ToList());
+                        ModifyDataTable(data, coloumRename?.Split("||").ToList());
 
                     }
                     data.Columns.Add("TenantId");
@@ -341,7 +342,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             _row["TRANSMISSION_DATETIME"] = GdImporter.ConvertTransmissionDate(_row["TRANSMISSION_DATETIME"].ToString());
                         }
-                        if (EntityName != "ITRS_Data") { 
+                        if (EntityName != "ITRS_Data" && EntityName != "NtnConversion") { 
                         
                         _row["CreationTime"] = DateTimeNow;
                         _row["IsDeleted"] = false;
