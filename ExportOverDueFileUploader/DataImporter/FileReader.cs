@@ -214,5 +214,36 @@ namespace ExportOverDueFileUploader.DataImporter
                 writer.WriteValue(value);
             }
         }
+
+        public static void MoveFiles(string sourceFolder, params string[] fileExtensions)
+        {
+           // Create "Old" folder if it doesn't exist
+            string oldFolder = Path.Combine(sourceFolder, "Old");
+            if (!Directory.Exists(oldFolder))
+            {
+                Directory.CreateDirectory(oldFolder);
+            }
+
+            // Destination folder path with the current date
+            string destinationFolder = Path.Combine(oldFolder, DateTime.Now.ToString("yyyy-MM-dd"));
+
+            // Get all files with specified extensions in the source folder
+            foreach (string extension in fileExtensions)
+            {
+                string[] files = Directory.GetFiles(sourceFolder, extension);
+
+                // Move each file to the destination folder
+                foreach (string file in files)
+                {
+                    string fileName = Path.GetFileName(file);
+                    string destinationPath = Path.Combine(destinationFolder, fileName);
+                    if (!Directory.Exists(destinationFolder))
+                    {
+                        Directory.CreateDirectory(destinationFolder);
+                    }
+                    File.Move(file, destinationPath);
+                }
+            }
+        }
     }
 }

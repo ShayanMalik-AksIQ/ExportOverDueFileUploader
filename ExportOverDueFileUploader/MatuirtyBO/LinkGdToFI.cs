@@ -377,6 +377,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         {
             try
             {
+                List<long> OpengdIds = new List<long>();
                 Seriloger.LoggerInstance.Information($" Sync New Fis In Process.... :");
                 ExportOverDueContext context = new ExportOverDueContext();
                 List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
@@ -513,29 +514,36 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             #region If Mode of Payemnt 305
                             else if (item.ModeOFPayment == "305")
                             {
-                                FiData = lstfis.Where(x => x.openAccountGdNumber == gd.gdNumber).FirstOrDefault();
 
-                                DateTime gdDate = gd.GDDate.Value;
-                                if (false)
-                                {
-                                    int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                    if (x > 0)
-                                    {
-                                        gdDate = gd.BLDateVale.Value;
-                                    }
-                                }
-                                gdDate = gdDate.AddDays(45);
-                                if (FiData != null)
-                                {
-                                    GdV20Dates.Add(new GD_FI_Link()
-                                    {
-                                        GdId = gd.Id,
-                                        FiId = FiData == null ? null : FiData.Id,
-                                        type = "Open Account",
-                                        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
-                                        _MatruityDate = gdDate
-                                    });
-                                }
+                                // Coment as 305 will be handled by Lodgment and dosent Requrier Fi to be atttached
+
+
+                                //FiData = lstfis.Where(x => x.openAccountGdNumber == gd.gdNumber).FirstOrDefault();
+
+                                //DateTime gdDate = gd.GDDate.Value;
+                                //if (false)
+                                //{
+                                //    int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+                                //    if (x > 0)
+                                //    {
+                                //        gdDate = gd.BLDateVale.Value;
+                                //    }
+                                //}
+                                //gdDate = gdDate.AddDays(45);
+                                //if (FiData != null)
+                                //{
+
+                                //    GdV20Dates.Add(new GD_FI_Link()
+                                //    {
+                                //        GdId = gd.Id,
+                                //        FiId = FiData == null ? null : FiData.Id,
+                                //        type = "Open Account",
+                                //        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
+                                //        _MatruityDate = gdDate
+                                //    });
+                                //    OpengdIds.Add(gd.Id);
+
+                                //}
 
 
                             }
@@ -560,6 +568,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     V20Dates.AddRange(GdV20Dates);
                 }
                 CustomRepo.InsertFI_GD_Link(V20Dates);
+               // CustomRepo.RemoveLinkFI_GD_Link(OpengdIds);
                 return "Sucess";
             }
             catch (Exception ex)

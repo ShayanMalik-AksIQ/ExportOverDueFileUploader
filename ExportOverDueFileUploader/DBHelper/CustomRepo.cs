@@ -49,7 +49,22 @@ namespace ExportOverDueFileUploader.DBHelper
             context.GD_FI_Links.AddRange(v20fields);
             context.SaveChanges();
         }
+        public static void RemoveLinkFI_GD_Link(List<long> openAccountGdId)
+        {
+            try
+            {
+            var context = new ExportOverDueContext();
+            var Query = $"Delete from GD_FI_Link where GdId in ({string.Join(",", openAccountGdId)}) and FiId is null";
+            var result = context.Database.ExecuteSqlRaw(Query);
+            context.SaveChanges();
 
+            }
+            catch(Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error Fetching RemoveLinkFI_GD_Link", ex.Message);
+                
+            }
+        }
 
         #region GD_FI_Link
 

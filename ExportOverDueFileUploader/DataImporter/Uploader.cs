@@ -49,7 +49,6 @@ namespace ExportOverDueFileUploader.DataImporter
                 Seriloger.LoggerInstance.Information("Export Over Due Uploader Execution Begins ......");
                 ExportOverDueContext context = new ExportOverDueContext();
                 var maxLoadingOrder = context.RequestStatuses.Where(x => x.Module.ModuleName.ToLower() == "Setups".ToLower()).Select(x => x.LoadingOrder).Max();
-               // var vv = context.FileTypes;
                 var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted == false && x.RequestStatus.LoadingOrder == maxLoadingOrder).ToList();//aproved only
                 if (lstFileTypes.IsNullOrEmpty())
                 {
@@ -120,6 +119,8 @@ namespace ExportOverDueFileUploader.DataImporter
                                     auditTrail.Remarks = $"{FileJsonData}";
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Hadders MissMached {Files.IndexOf(file) + 1}/{Files.Count}");
                                 }
+
+
                             }
                             catch (Exception ex)
                             {
@@ -149,8 +150,8 @@ namespace ExportOverDueFileUploader.DataImporter
                             Seriloger.LoggerInstance.Error(ex.Message);
                         }
                     }
-
                     CustomRepo.RemoveDublicate(fileType.Description);
+                    FileReader.MoveFiles(fileType.FilePath, "*.xlsx", "*.csv");
 
 
                 }
@@ -162,13 +163,6 @@ namespace ExportOverDueFileUploader.DataImporter
             }
 
         }
-
-
-
-
-
-
-
         public void Executeion(DataTable dataTable, string EntityName, string fileName)
         {
             FileImportAuditTrail auditTrail = new FileImportAuditTrail();
@@ -272,7 +266,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     if (EntityName == "GoodsDeclaration")
                     {
-                        msgIds = ExtractOkMessageId(data);
+                       // msgIds = ExtractOkMessageId(data);
                         data = data.Select("MESSAGE_TYPE = '102'").CopyToDataTable();
                         //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
                         data = data.Select("DIRECTION = 'REQUEST'").CopyToDataTable();
@@ -316,7 +310,6 @@ namespace ExportOverDueFileUploader.DataImporter
                         AddColumns(data, FiImporter.FiColoums);
                         if (dataTable != null)
                         {
-
                             data.Columns.Add("CREATED_DATETIME");
                             data.Columns.Add("TRANSACTION_TYPE");
                         }
@@ -441,8 +434,8 @@ namespace ExportOverDueFileUploader.DataImporter
                     CustomRepo.RemoveDublicate(EntityName, FileID);
                     if (!lstCobFis.IsNullOrEmpty())
                     {
-                        Executeion(cobFiTable, "FinancialInstrument", fileName);
-                        // ImportData(null, "FinancialInstrument", FileID, fileName, cobFiTable);
+                        //Executeion(cobFiTable, "FinancialInstrument", fileName);
+                        
                     }
 
 
@@ -477,7 +470,7 @@ namespace ExportOverDueFileUploader.DataImporter
             {// get fro df
                 var connectionString = AppSettings.ConnectionString;
 
-                int batchSize = 10000; // Set your desired batch size df
+                int batchSize = AppSettings.BatchSize; // Set your desired batch size df
                 int totalRows = dt.Rows.Count;
 
                 using (var sqlbulk = new SqlBulkCopy(connectionString))
