@@ -33,14 +33,14 @@ internal class Program
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json")
                 .Build();
-           AppSettings.ConnectionString = configuration.GetConnectionString("DefaultConnection");
-         // AppSettings.ConnectionString = "Server=DESKTOP-O10K6M5; Database=ExportOverDueJS_AllData; Trusted_Connection=True; TrustServerCertificate=True;Command Timeout=16000;";
+            //AppSettings.ConnectionString = configuration.GetConnectionString("DefaultConnection");
+            AppSettings.ConnectionString = "Server=DESKTOP-O10K6M5; Database=ExportOverDueJs_Uat; Trusted_Connection=True; TrustServerCertificate=True;Command Timeout=16000;";
             AppSettings.TenantId = int.Parse(configuration.GetConnectionString("TenantId"));
             AppSettings.BatchSize = int.Parse(configuration.GetConnectionString("BatchSize"));
 
             Uploader x = new Uploader();
             x.Executeion();
-            
+
         }
         catch (Exception ex)
         {
@@ -48,5 +48,4 @@ internal class Program
         }
     }
 
-    
 }
