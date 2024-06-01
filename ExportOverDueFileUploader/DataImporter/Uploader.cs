@@ -40,6 +40,7 @@ namespace ExportOverDueFileUploader.DataImporter
             TableNames.Add("BcaData");
             TableNames.Add("ITRS_Data");
             TableNames.Add("NtnConversion");
+            TableNames.Add("RealizationReport");
 
         }
         public void Executeion()
@@ -284,7 +285,8 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         data = data.Select("CollectionNumber <> '' OR TransactionRef <> ''").CopyToDataTable();
                     }
-                    if (EntityName != "ITRS_Data" && EntityName != "NtnConversion")
+                    
+                    if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport")
                     {
 
                         data.Columns.Add("CreationTime");
@@ -292,7 +294,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         data.Columns.Add("CreatorUserId");
 
                     }
-                    else if(!coloumRename.IsNullOrEmpty())
+                     if(!coloumRename.IsNullOrEmpty())
                     {
                         ModifyDataTable(data, coloumRename?.Split("||").ToList());
 
@@ -300,6 +302,12 @@ namespace ExportOverDueFileUploader.DataImporter
                     data.Columns.Add("TenantId");
                     data.Columns.Add("FileAuditId");
 
+                    if (EntityName == "RealizationReport")
+                    {
+
+                        data = data.Select("RelAmount <> '-' AND RelAmount <> '' AND FiNumber <> '-' AND FiNumber <> '' AND RealizationDate <> '-' AND RealizationDate <> ''").CopyToDataTable();
+                        data.Columns.Add("_RealizationDate");
+                    }
                     if (EntityName == "GoodsDeclaration")
                     {
                         AddColumns(data, GdImporter.GdColumns);
@@ -335,7 +343,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             _row["TRANSMISSION_DATETIME"] = GdImporter.ConvertTransmissionDate(_row["TRANSMISSION_DATETIME"].ToString());
                         }
-                        if (EntityName != "ITRS_Data" && EntityName != "NtnConversion") { 
+                        if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport") { 
                         
                         _row["CreationTime"] = DateTimeNow;
                         _row["IsDeleted"] = false;
@@ -344,7 +352,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                         _row["TenantId"] = tenantId;
                         _row["FileAuditId"] = FileID;
-
+                        //data.Columns.Add("_RealizationDate");
 
                         if (EntityName == "GoodsDeclaration")
                         {
@@ -390,6 +398,9 @@ namespace ExportOverDueFileUploader.DataImporter
                         else if (EntityName == "ITRS_Data")
                         {
                             ITRS_Importer.LoadITRSInfoColoums(_row);
+                        }else if (EntityName == "RealizationReport")
+                        {
+                            ITRS_Importer.LoadRelRptInfoColoums(_row);
                         }
                     }
                     if (data.Columns.Contains("ID"))
