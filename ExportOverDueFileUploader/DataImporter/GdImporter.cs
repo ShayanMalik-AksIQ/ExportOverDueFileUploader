@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -34,7 +35,17 @@ namespace ExportOverDueFileUploader.DataImporter
             "finInsUniqueNumber",
             "modeOfPayment"
         };
-
+        public static List<string> ImportGdColumns = new List<string>
+        {
+            "ImporterIban",
+            "ImporterName",
+            "ImporterNtn",
+            "gdNumber",
+            "gdStatus",
+            "GDDate",
+            "ModeOfPayment",
+            "FinInsUniqueNumber"
+        };
         public static List<string> LoadGdInfoColoums(DataRow _row)
         {
             try
@@ -96,7 +107,57 @@ namespace ExportOverDueFileUploader.DataImporter
 
         }
 
-        public class  cobReturn{
+
+        public static List<string> LoadImportGdInfoColoums(DataRow _row)
+        {
+            try
+            {
+                List<string> fiNumber = new List<string>();
+                GdImportJson payload = JsonConvert.DeserializeObject<GdImportJson>(_row["PAYLOAD"]?.ToString());
+                List<string> lstFiNumber = new List<string>();
+                List<string> lstModeOfPayment = new List<string>();
+
+                if (payload?.data?.financialInfo != null)
+                {
+                    fiNumber.Add(payload?.data?.financialInfo?.finInsUniqueNumber);
+                    _row["finInsUniqueNumber"] = payload?.data?.financialInfo?.finInsUniqueNumber;
+                    _row["modeOfPayment"] = payload?.data?.financialInfo?.modeOfPayment;
+                    _row["gdNumber"] = payload?.data?.gdNumber?.ToString();
+                    _row["gdStatus"] = payload?.data?.gdStatus?.ToString();
+                    _row["ImporterNtn"] = payload?.data?.consignorConsigneeInfo?.ntnFtn.ToString();
+                    _row["ImporterName"] = payload?.data?.consignorConsigneeInfo?.consigneeName.ToString();
+                    _row["ImporterIban"] = payload?.data?.financialInfo?.importerIban;
+                }
+
+                
+
+                if (payload?.data?.gdNumber != null)
+                {
+                    try
+                    {
+                        var lstgddate = payload?.data?.gdNumber?.ToString().Split('-').ToList().Skip(3).Take(3).ToList();
+                        _row["GDDate"] = new DateTime(Convert.ToInt16(lstgddate[2]), Convert.ToInt16(lstgddate[1]), Convert.ToInt16(lstgddate[0]));
+
+                    }
+                    catch
+                    {
+                        _row["GDDate"] = null;
+                    }
+                }
+
+                return fiNumber;
+            }
+            catch (Exception ex)
+            {
+               
+                return null;
+            }
+
+        }
+
+
+        public class cobReturn
+        {
 
             public List<string> fiNumbers { get; set; }
             public List<DataRow> aditionalRows { get; set; }
@@ -107,20 +168,20 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             try
             {
-                FinancialInstrumentInfo cobFi= new FinancialInstrumentInfo();
+                FinancialInstrumentInfo cobFi = new FinancialInstrumentInfo();
 
                 if (!_row["PAYLOAD"].ToString().IsNullOrEmpty())
                 {
                     List<string> fiNumber = new List<string>();
                     List<DataRow> dataRows = new List<DataRow>();
-                     var x = _row["PAYLOAD"]?.ToString();
+                    var x = _row["PAYLOAD"]?.ToString();
                     cobPayLoad payload = JsonConvert.DeserializeObject<cobPayLoad>(_row["PAYLOAD"]?.ToString());
-                    if (payload?.data?.gdInfo.Count()>1)
+                    if (payload?.data?.gdInfo.Count() > 1)
                     {
-                        
+
                     }
                     var CountGds = payload?.data?.gdInfo.Count();
-                        int i = 0;
+                    int i = 0;
                     foreach (var gd in payload?.data?.gdInfo)
                     {
                         if (gd != null)
@@ -161,18 +222,18 @@ namespace ExportOverDueFileUploader.DataImporter
                             {
                                 dataRows.Add(DeepCopyDataRow(_row));
                             }
-                            }
+                        }
                     }
 
-                    if (payload?.data?.financialInstrumentInfo!=null)
+                    if (payload?.data?.financialInstrumentInfo != null)
                     {
                         cobFi = payload?.data?.financialInstrumentInfo;
                     }
                     return new cobReturn
                     {
-                        cobFi= cobFi,
-                        fiNumbers =fiNumber,
-                        aditionalRows= dataRows
+                        cobFi = cobFi,
+                        fiNumbers = fiNumber,
+                        aditionalRows = dataRows
 
                     };
                 }
@@ -183,7 +244,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
             catch (Exception ex)
             {
-                
+
                 return null;
             }
 
@@ -227,9 +288,9 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             try
             {
-                int lastDotIndex = dateString.LastIndexOf('.');
-                string dateStringWithoutMilliseconds = dateString.Substring(0, lastDotIndex);
-                string format = "dd-MMM-yy hh.mm.ss"; // Format without milliseconds
+                int lastIndex = dateString.Length - 1;
+                string dateStringWithoutMilliseconds = dateString.Replace(" AM", "").Replace(" PM", ""); ;//Remove(" PM");    
+                string format = "MM/dd/yyyy hh:mm:ss"; // Format without milliseconds
                 DateTime result = DateTime.ParseExact(dateStringWithoutMilliseconds, format, System.Globalization.CultureInfo.InvariantCulture);
                 string amPm = dateString.Substring(dateString.Length - 2);
                 if (amPm == "PM")
@@ -240,7 +301,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
             catch (Exception ex)
             {
-                
+
                 return null;
             }
         }

@@ -9,12 +9,22 @@ namespace ExportOverDueFileUploader.Modles.JsonHelper
     public class FiJson
     {
     }
+    public class FIPayload
+    {
+        public string MessageId { get; set; }
+        public string Timestamp { get; set; }
+        public string SenderId { get; set; }
+        public string ReceiverId { get; set; }
+        public string MethodId { get; set; }
+        public object Data { get; set; }
+        public string Signature { get; set; }
+    }
 
     public class FiPayLoadJson
     {
-        public string exporterNtn { get; set; }
-        public string exporterName { get; set; }
-        public string exporterIban { get; set; }
+        public string importerNtn { get; set; }
+        public string importerName { get; set; }
+        public string importerIban { get; set; }
         public string modeOfPayment { get; set; }
         public string finInsUniqueNumber { get; set; }
         public Openaccountdata openAccountData { get; set; }

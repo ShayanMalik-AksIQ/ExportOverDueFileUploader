@@ -27,6 +27,14 @@ namespace ExportOverDueFileUploader.DataImporter
             "ExporterNTN",
             "Days",
             "FiCertifcationdate"
+        };public static List<string> ImportFiColoums = new List<string>
+        {
+            "Days",
+            "ImporterNtn",
+            "ImporterName",
+            "ImporterIban",
+            "modeOfPayment",
+            "FiCertifcationDate"
         };
 
         //public static List<string> CobFiColoums = new List<string>
@@ -66,12 +74,12 @@ namespace ExportOverDueFileUploader.DataImporter
                     _row["openAccountGdNumber"] = payload.openAccountData?.gdNumber?.ToString();
                     _row["finInsUniqueNumber"] = payload.finInsUniqueNumber;
                     _row["modeOfPayment"] = payload.modeOfPayment;
-                    _row["ExporterNTN"] = payload.exporterNtn;
-                    _row["ExporterRegNo"] = payload.exporterNtn;
-                    _row["ExporterAddress"] = payload.paymentInformation?.exporterAddress;
-                    _row["ExporterCity"] = payload.paymentInformation?.exporterCountry;
-                    _row["ExporterName"] = payload.exporterName;
-                    _row["days"] = payload?.lcData?.days ?? (payload?.contractCollectionData?.days ?? 0);
+                    //_row["ExporterNTN"] = payload.exporterNtn;
+                    //_row["ExporterRegNo"] = payload.exporterNtn;
+                    //_row["ExporterAddreporterName;
+                    //_row["days"] = payload?.lcData?.days ?? (paylss"] = payload.paymentInformation?.exporterAddress;
+                    //_row["ExporterCity"] = payload.paymentInformation?.exporterCountry;
+                    //_row["ExporterName"] = payload.exoad?.contractCollectionData?.days ?? 0);
 
                     if (!payload.finInsUniqueNumber.IsNullOrEmpty())
                     {
@@ -98,6 +106,56 @@ namespace ExportOverDueFileUploader.DataImporter
                     if(_row["TRANSACTION_TYPE"].ToString().IsNullOrEmpty() && _row["CREATED_DATETIME"].ToString().IsNullOrEmpty())
                     {
                         _row["TRANSACTION_TYPE"] = "1524";
+                    }
+                }
+
+            }
+            catch
+            {
+                //Console.WriteLine(_row["ResponceCode"]?.ToString());
+                return;
+            }
+
+        }
+
+        public static void LoadImportFIInfoColoums(DataRow _row)
+        {
+            try
+            {
+               
+                var InnerObj = JsonConvert.DeserializeObject<FIPayload>(_row["PAYLOAD"]?.ToString()).Data.ToString();
+
+                FiPayLoadJson payload = JsonConvert.DeserializeObject<FiPayLoadJson>(InnerObj);
+                if (payload != null)
+                {
+                     _row["finInsUniqueNumber"] = payload.finInsUniqueNumber;
+                    _row["modeOfPayment"] = payload.modeOfPayment;
+                    _row["importerNTN"] = payload.importerNtn;
+                    _row["importerIban"] = payload.importerNtn;
+                    _row["importerName"] = payload.importerName;
+                    _row["days"] = payload?.lcData?.days ?? (payload?.contractCollectionData?.days ?? 0);
+
+                    if (!payload.finInsUniqueNumber.IsNullOrEmpty())
+                    {
+                        try
+                        {
+
+                            string ctdate = payload.finInsUniqueNumber.Split('-').ToList().LastOrDefault();
+                            int a = Convert.ToInt16(ctdate.Substring(0, 2));
+                            int b = Convert.ToInt16(ctdate.Substring(2, 2));
+                            int d = Convert.ToInt16(ctdate.Substring(4, 4));
+
+                            _row["FiCertifcationdate"] = new DateTime(d, b, a);
+                        }
+                        catch
+                        {
+                            _row["FiCertifcationdate"] = null;
+                        }
+
+                    }
+                    else
+                    {
+                        _row["FiCertifcationdate"] = null;
                     }
                 }
 

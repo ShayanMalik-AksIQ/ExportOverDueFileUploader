@@ -94,6 +94,7 @@ namespace ExportOverDueFileUploader.Modles.JsonHelper
 
     public class FinancialInfo
     {
+        public string importerIban { get; init; }
         public string modeOfPayment { get; init; }
         public string finInsUniqueNumber { get; init; }
         public string currency { get; init; }

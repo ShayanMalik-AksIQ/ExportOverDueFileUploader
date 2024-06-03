@@ -49,6 +49,19 @@ namespace ExportOverDueFileUploader.DBHelper
             context.GD_FI_Links.AddRange(v20fields);
             context.SaveChanges();
         }
+
+        public static void InsertImportFI_GD_Link(List<ImportGdFiLink> v20fields)
+        {
+            foreach (var field in v20fields)
+            {
+                field.TenantId = AppSettings.TenantId;
+                field.CreationTime = DateTime.Now;
+            }
+            var context = new ExportOverDueContext();
+
+            context.ImportGdFiLink.AddRange(v20fields);
+            context.SaveChanges();
+        }
         public static void RemoveLinkFI_GD_Link(List<long> openAccountGdId)
         {
             try
@@ -293,7 +306,181 @@ namespace ExportOverDueFileUploader.DBHelper
 
         #endregion  GD_FI_Link
 
+        #region IMPORT_GD_FI_Link
 
+
+        #region Sync newGD
+        public static List<GoodsDeclaration_Import> GetGoodsDeclarationImportForLink(long TenantId, long fileId)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                var result = new List<GoodsDeclaration_Import>();
+                var rawResult = context.GoodsDeclaration_Import
+                        .Where(g => g.TenantId == TenantId && g.IsDeleted == false
+                               && g.FileAuditId == fileId)
+                        .Select(g => new
+                        {
+                            g.GDDate,
+                            g.Id,
+                            g.IsDeleted,
+                            TenantId = g.TenantId,
+                            g.FinInsUniqueNumber,
+                            g.ModeOfPayment,
+                            g.gdNumber,
+                        })
+                        .ToList();
+                result = rawResult.Select(g => new GoodsDeclaration_Import
+                {
+                    Id = g.Id,
+                    IsDeleted = g.IsDeleted,
+                    TenantId = g.TenantId,
+                    FinInsUniqueNumber = g.FinInsUniqueNumber,
+                    ModeOfPayment=g.ModeOfPayment,
+                    gdNumber = g.gdNumber,
+                    GDDate = g.GDDate,
+
+                }).ToList();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error Fetching GoodsDeclaration  Data", ex.Message);
+                return null;
+            }
+        }
+        public static List<FinancialInstrument_Import> GetFinancialInstrumentForImportForLink(long TenantId, NewFiGdFilterModel fis_gds)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                // var ids= context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE == "1524" && g.IsDeleted == false)
+                var rawResult = context.FinancialInstrument_Import.Where(g => g.TenantId == TenantId && g.IsDeleted == false && fis_gds.fis.Contains(g.FinInsUniqueNumber))
+                                                            .Select(f => new
+                                                            {
+                                                                f.Id,
+                                                                f.IsDeleted,
+                                                                TenantId =f.TenantId,
+                                                           
+                                                                f.FinInsUniqueNumber,
+                                                                f.modeOfPayment,
+                                                                f.FiCertifcationDate
+                                                            })
+                                                            .ToList();
+
+                
+
+                List<FinancialInstrument_Import> result = rawResult.Select(f => new FinancialInstrument_Import
+                {
+                    Id = f.Id,
+                    IsDeleted = f.IsDeleted,
+                    TenantId = f.TenantId,
+                    FinInsUniqueNumber = f.FinInsUniqueNumber,
+                    modeOfPayment = f.modeOfPayment,
+                    FiCertifcationDate = f.FiCertifcationDate,
+                }).ToList();
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error Fetching FinancialInstrument Data", ex.Message);
+                return null;
+            }
+        }
+        #endregion  Sync newGD
+
+        #region Sync newFi
+        public static List<FinancialInstrument> GetFinancialInstrumentImportForLink(long TenantId, long fileId)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                var rawResult = context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.IsDeleted == false
+                                                                    && g.FileAuditId == fileId)
+                                                            .Select(f => new
+                                                            {
+                                                                f.Id,
+                                                                f.IsDeleted,
+                                                                TenantId = f.TenantId,
+                                                                f.TRANSACTION_TYPE,
+                                                                f.contractCollectionData,
+                                                                f.finInsUniqueNumber,
+                                                                f.lcData,
+                                                                f.modeOfPayment,
+                                                                f.openAccountGdNumber,
+                                                                f.paymentInformation,
+                                                                f.FiCertifcationdate
+                                                            })
+                                                            .ToList();
+
+                List<FinancialInstrument> result = rawResult.Select(f => new FinancialInstrument
+                {
+                    Id = f.Id,
+                    IsDeleted = f.IsDeleted,
+                    TenantId = f.TenantId,
+                    TRANSACTION_TYPE = f.TRANSACTION_TYPE,
+                    contractCollectionData = f.contractCollectionData,
+                    finInsUniqueNumber = f.finInsUniqueNumber,
+                    lcData = f.lcData,
+                    modeOfPayment = f.modeOfPayment,
+                    openAccountGdNumber = f.openAccountGdNumber,
+                    paymentInformation = f.paymentInformation,
+                    FiCertifcationdate = f.FiCertifcationdate,
+                }).ToList();
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error Fetching FinancialInstrument Data", ex.Message);
+                return null;
+            }
+        }
+        public static List<GoodsDeclaration_Import> GetGoodsDeclarationImportForLink(NewFiGdFilterModel fis_gds, long TenantId)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                var result = new List<GoodsDeclaration_Import>();
+                var rawResult = context.GoodsDeclaration_Import
+                        .Where(g => g.TenantId == TenantId  && g.IsDeleted == false
+                               && fis_gds.gds.Contains(g.gdNumber))
+                       .Select(g => new
+                       {
+                           g.GDDate,
+                           g.Id,
+                           g.IsDeleted,
+                           TenantId = g.TenantId,
+                           g.FinInsUniqueNumber,
+                           g.ModeOfPayment,
+                           g.gdNumber,
+                       })
+                        .ToList();
+                result = rawResult.Select(g => new GoodsDeclaration_Import
+                {
+                    Id = g.Id,
+                    IsDeleted = g.IsDeleted,
+                    TenantId = g.TenantId,
+                    FinInsUniqueNumber = g.FinInsUniqueNumber,
+                    ModeOfPayment = g.ModeOfPayment,
+                    gdNumber = g.gdNumber,
+                    GDDate = g.GDDate,
+
+                }).ToList();
+            
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error Fetching GoodsDeclaration  Data", ex.Message);
+                return null;
+            }
+        }
+        #endregion  Sync newFI
+
+
+        #endregion  GD_FI_Link
 
         //public static int RemoveDublicateGdsFileWise(long FileAuditId)
         //{

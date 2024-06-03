@@ -32,15 +32,8 @@ namespace ExportOverDueFileUploader.DataImporter
         public Uploader()
         {
             //_logger = new Logger<>();
-            TableNames.Add("FileType");
-            TableNames.Add("GoodsDeclaration");
-            TableNames.Add("FinancialInstrument");
-            TableNames.Add("LetterOfCredit");
-            TableNames.Add("DocumentaryCollection");
-            TableNames.Add("BcaData");
-            TableNames.Add("ITRS_Data");
-            TableNames.Add("NtnConversion");
-            TableNames.Add("RealizationReport");
+            TableNames.Add("GoodsDeclaration_Import");
+            TableNames.Add("FinancialInstrument_Import");
 
         }
         public void Executeion()
@@ -104,13 +97,13 @@ namespace ExportOverDueFileUploader.DataImporter
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Db Export Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
                                     auditTrail.Remarks = "Success";
                                     auditTrail.Success = true;
-                                    if (fileType.Description == "GoodsDeclaration")
+                                    if (fileType.Description == "GoodsDeclaration_Import")
                                     {
-                                        LinkGdToFI.SyncNewGd(auditTrail.Id, filters);
+                                        LinkGdToFI.SyncNewImportGd(auditTrail.Id, filters);
                                     }
-                                    if (fileType.Description == "FinancialInstrument")
+                                    if (fileType.Description == "FinancialInstrument_import")
                                     {
-                                        LinkGdToFI.SyncNewFi(auditTrail.Id, filters);
+                                        LinkGdToFI.SyncNewImportGd(auditTrail.Id, filters);
                                     }
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Sync Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
                                 }
@@ -152,7 +145,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                     }
                     CustomRepo.RemoveDublicate(fileType.Description);
-                    FileReader.MoveFiles(fileType.FilePath, "*.xlsx", "*.csv");
+                   // FileReader.MoveFiles(fileType.FilePath, "*.xlsx", "*.csv");
 
 
                 }
@@ -294,7 +287,30 @@ namespace ExportOverDueFileUploader.DataImporter
                         data.Columns.Add("CreatorUserId");
 
                     }
-                     if(!coloumRename.IsNullOrEmpty())
+                    #region Import Fbl
+                    //Filter data
+                    if (EntityName == "GoodsDeclaration_Import")
+                    {
+                        
+                        data = data.Select("ProcessCode = '101'").CopyToDataTable();
+                        //data = data.Select("DIRECTION = 'REQUEST'").CopyToDataTable();
+                        if (data.Rows.Count == 0)
+                        {
+                            return null;
+                        }
+                    }
+                    if (EntityName == "FinancialInstrument_Import")
+                    {
+                        // msgIds = ExtractOkMessageId(data);
+                        data = data.Select("METHODID <> '1520' OR METHODID <> '1549'").CopyToDataTable();
+                        if (data.Rows.Count == 0)
+                        {
+                            return null;
+                        }
+                    }
+                    #endregion Import Fbl
+
+                    if (!coloumRename.IsNullOrEmpty())
                     {
                         ModifyDataTable(data, coloumRename?.Split("||").ToList());
 
@@ -308,13 +324,33 @@ namespace ExportOverDueFileUploader.DataImporter
                         data = data.Select("RelAmount <> '-' AND RelAmount <> '' AND FiNumber <> '-' AND FiNumber <> '' AND RealizationDate <> '-' AND RealizationDate <> ''").CopyToDataTable();
                         data.Columns.Add("_RealizationDate");
                     }
+                    else if (EntityName == "GoodsDeclaration_Import")
+                    {
+                        AddColumns(data, GdImporter.ImportGdColumns);
+                    }
+                    else if (EntityName == "FinancialInstrument_Import")
+                    {
+                        AddColumns(data, FiImporter.ImportFiColoums);
+                       
+                    }
+                    else if (EntityName == "BcaData")
+                    {
+                        AddColumns(data, FiImporter.BcaColoums);
+                    }
+
+                    if (data.Columns.Contains("ID"))
+                    {
+                        data.Columns.Add("I_D");
+                    }
+
+
+                    #region Import Fbl
                     if (EntityName == "GoodsDeclaration")
                     {
-                        AddColumns(data, GdImporter.GdColumns);
+                        AddColumns(data, GdImporter.ImportGdColumns);
                     }
                     else if (EntityName == "FinancialInstrument")
                     {
-
                         AddColumns(data, FiImporter.FiColoums);
                         if (dataTable != null)
                         {
@@ -322,14 +358,8 @@ namespace ExportOverDueFileUploader.DataImporter
                             data.Columns.Add("TRANSACTION_TYPE");
                         }
                     }
-                    else if (EntityName == "BcaData")
-                    {
-                        AddColumns(data, FiImporter.BcaColoums);
-                    }
-                    if (data.Columns.Contains("ID"))
-                    {
-                        data.Columns.Add("I_D");
-                    }
+                    #endregion Import Fbl
+
                     int tenantId = AppSettings.TenantId;
 
                     foreach (DataRow _row in data.Rows)
@@ -339,9 +369,9 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             _row["I_D"] = _row["ID"];
                         }
-                        if (data.Columns.Contains("TRANSMISSION_DATETIME"))
+                        if (data.Columns.Contains("TransmissionDate"))
                         {
-                            _row["TRANSMISSION_DATETIME"] = GdImporter.ConvertTransmissionDate(_row["TRANSMISSION_DATETIME"].ToString());
+                           // _row["TransmissionDate"] = GdImporter.ConvertTransmissionDate(_row["TransmissionDate"].ToString());
                         }
                         if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport") { 
                         
@@ -354,39 +384,25 @@ namespace ExportOverDueFileUploader.DataImporter
                         _row["FileAuditId"] = FileID;
                         //data.Columns.Add("_RealizationDate");
 
-                        if (EntityName == "GoodsDeclaration")
+                        if (EntityName == "GoodsDeclaration_Import")
                         {
-                            if ((!_row["MESSAGE_ID"].ToString().IsNullOrEmpty()) && _row["DIRECTION"].ToString() == "REQUEST" && msgIds.Contains(_row["MESSAGE_ID"].ToString()) && _row["MESSAGE_TYPE"].ToString() != "101")
-                            {
-                                _row["STATUS_CODE"] = "200";// custom
-                            }
-                            else
-                            {
-                                _row["STATUS_CODE"] = "500";
-                            }
                             List<string> fis = new List<string>();
-                            if (_row["MESSAGE_TYPE"].ToString() == "307")
-                            {
-                                result = GdImporter.LoadCobGdInfoColoums(_row);
-                                fis = result?.fiNumbers;
-                                if (result?.cobFi != null)
-                                {
-                                    lstCobFis.Add(result.cobFi);
-                                }
-                            }
-                            else
-                            {
-                                fis = GdImporter.LoadGdInfoColoums(_row);
-                            }
+                            //if ((!_row["MESSAGE_ID"].ToString().IsNullOrEmpty()) && _row["DIRECTION"].ToString() == "REQUEST" && msgIds.Contains(_row["MESSAGE_ID"].ToString()) && _row["MESSAGE_TYPE"].ToString() != "101")
+                            //{
+                            //   _row["STATUS_CODE"] = "200";// custom
+                            //}
+                           
+                                fis = GdImporter.LoadImportGdInfoColoums(_row);
+                            
                             if (!fis.IsNullOrEmpty())
                             {
                                 newGdFis.AddRange(fis);
                             }
                         }
 
-                        else if (EntityName == "FinancialInstrument")
+                        else if (EntityName == "FinancialInstrument_Import")
                         {
-                            FiImporter.LoadFIInfoColoums(_row);
+                            FiImporter.LoadImportFIInfoColoums(_row);
 
 
 
@@ -452,11 +468,11 @@ namespace ExportOverDueFileUploader.DataImporter
 
                     NewFiGdFilterModel filter = new NewFiGdFilterModel();
 
-                    if (EntityName == "GoodsDeclaration")
+                    if (EntityName == "GoodsDeclaration_Import")
                     {
                         filter = ExtractFiNumberFromNewGDs(data);
                     }
-                    if (EntityName == "FinancialInstrument")
+                    if (EntityName == "FinancialInstrument_Import")
                     {
                         filter = ExtractFilisterList(data);
                     }
@@ -521,7 +537,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 {
                     // Get all file names in the folder
                     return Directory.GetFiles(folderPath)
-                        .Select(Path.GetFileName).Where(x => x.EndsWith(".csv") || x.EndsWith(".xlsx"))
+                        .Select(Path.GetFileName).Where(x => x.EndsWith(".csv") || x.EndsWith(".xlsx")|| x.EndsWith(".xlx") || x.EndsWith(".xls"))
                         .ToList();
                 }
                 else
@@ -545,44 +561,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 foreach (DataRow row in dataTable.Rows)
                 {
-
-                    string LstfinInsUniqueNumbers = row["LstfinInsUniqueNumbers"].ToString();
-                    List<FiNumberAndMode> fiNumberAndModes = new List<FiNumberAndMode>();
-                    if (LstfinInsUniqueNumbers != null && LstfinInsUniqueNumbers != "")
-                    {
-                        foreach (var fi in LstfinInsUniqueNumbers.Split(","))
-                        {
-                            var x = new FiNumberAndMode
-                            {
-                                FiNumber = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value ?? null,
-                                ModeOFPayment = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
-                            };
-                            if (x != null || !x.FiNumber.IsNullOrEmpty())
-                            {
-
-                                fis.Add(x.FiNumber);
-                            }
-                            if (fi == "(305)")
-                            {
-                                if (row["gdNumber"] != null)
-                                {
-                                    var gdnum = row["gdNumber"].ToString();
-                                    if (gdnum.IsNullOrEmpty())
-                                    {
-
-                                    }
-                                    gds.Add(row["gdNumber"].ToString());
-                                }
-                            }
-                            if (x == null || x.FiNumber.IsNullOrEmpty() && fi != "(305)")
-                            {
-
-
-                            }
-                        }
-                    }
-
-
+                    fis.Add(row["FinInsUniqueNumber"].ToString());
                 }
                 return new NewFiGdFilterModel
                 {
@@ -609,16 +588,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 foreach (DataRow row in dataTable.Rows)
                 {
-                    string gd = row["openAccountGdNumber"].ToString();
-                    string fi = row["finInsUniqueNumber"].ToString();
-                    if (gd != "")
-                    {
-                        gdNumberList.Add(gd);
-                    }
-                    if (fi != "")
-                    {
-                        fis.Add(fi);
-                    }
+                   
                 }
                 return new NewFiGdFilterModel
                 {

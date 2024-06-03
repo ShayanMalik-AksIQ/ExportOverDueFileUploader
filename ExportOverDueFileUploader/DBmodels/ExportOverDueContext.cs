@@ -8,6 +8,7 @@ public partial class ExportOverDueContext : DbContext
 {
     public ExportOverDueContext()
     {
+
     }
 
     public ExportOverDueContext(DbContextOptions<ExportOverDueContext> options)
@@ -24,12 +25,16 @@ public partial class ExportOverDueContext : DbContext
     public virtual DbSet<FinancialInstrument> FinancialInstruments { get; set; }
 
     public virtual DbSet<GD_FI_Link> GD_FI_Links { get; set; }
+    public virtual DbSet<ImportGdFiLink> ImportGdFiLink { get; set; }
 
     public virtual DbSet<GoodsDeclaration> GoodsDeclarations { get; set; }
 
     public virtual DbSet<Module> Modules { get; set; }
 
     public virtual DbSet<RequestStatus> RequestStatuses { get; set; }
+    public virtual DbSet<GoodsDeclaration_Import> GoodsDeclaration_Import { get; set; }
+    public virtual DbSet<FinancialInstrument_Import> FinancialInstrument_Import { get; set; }
+    //public virtual DbSet<RequestStatus> RequestStatuses { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseSqlServer(AppSettings.ConnectionString);
@@ -77,6 +82,19 @@ public partial class ExportOverDueContext : DbContext
             entity.HasOne(d => d.Gd).WithMany(p => p.GD_FI_Links).HasForeignKey(d => d.GdId);
         });
 
+        modelBuilder.Entity<ImportGdFiLink>(entity =>
+        {
+            entity.ToTable("ImportGdFiLink");
+
+            entity.HasIndex(e => e.FiId, "ImportGdFiLink");
+
+            entity.HasIndex(e => e.GdId, "IX_GD_FI_Link_GdId");
+
+            entity.HasOne(d => d.Fi).WithMany(p => p.ImportGdFiLinks).HasForeignKey(d => d.FiId);
+
+            entity.HasOne(d => d.Gd).WithMany(p => p.ImportGdFiLinks).HasForeignKey(d => d.GdId);
+        });
+
         modelBuilder.Entity<GoodsDeclaration>(entity =>
         {
             entity.ToTable("GoodsDeclaration");
@@ -89,6 +107,14 @@ public partial class ExportOverDueContext : DbContext
             entity.HasIndex(e => e.ModuleID, "IX_RequestStatus_ModuleID");
 
             entity.HasOne(d => d.Module).WithMany(p => p.RequestStatuses).HasForeignKey(d => d.ModuleID);
+        });
+        modelBuilder.Entity<GoodsDeclaration_Import>(entity =>
+        {
+            entity.ToTable("GoodsDeclaration_Import");
+        });
+        modelBuilder.Entity<FinancialInstrument_Import>(entity =>
+        {
+            entity.ToTable("FinancialInstrument_Import");
         });
 
         OnModelCreatingPartial(modelBuilder);

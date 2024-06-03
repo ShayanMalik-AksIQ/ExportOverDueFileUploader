@@ -137,6 +137,7 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 // Get the headers as an array of strings
                 var headers = worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString());
+                var cheaders = worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString()).ToList();
 
                 var x= string.Join(",",worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString()).ToList());
                 var HeaderToValidate = HaddersToValidator.Split(",").ToList();
@@ -145,6 +146,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 if (HeaderToValidate.All(item => headers.Contains(item)) && headers.All(item => HeaderToValidate.Contains(item)))
                 {
                     headerRow = worksheet.Row(HadderStart).Cells().Select(cell => Regex.Replace(cell.Value.ToString(), "[^a-zA-Z0-9_]", "")).ToList();
+                    x = string .Join(",",headerRow);
                 }
                 else
                 {
