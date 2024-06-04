@@ -85,11 +85,9 @@ public partial class FinancialInstrument
 
     public int? Days { get; set; }
 
-    public long? FileAuditId { get; set; }
-
     public DateTime? FiCertifcationdate { get; set; }
 
+    public long? FileAuditId { get; set; }
+
     public virtual ICollection<GD_FI_Link> GD_FI_Links { get; set; } = new List<GD_FI_Link>();
-
-
 }

@@ -35,5 +35,7 @@ public partial class RequestStatus
 
     public virtual ICollection<FileType> FileTypes { get; set; } = new List<FileType>();
 
+    public virtual ICollection<ImportGdFiLink> ImportGdFiLinks { get; set; } = new List<ImportGdFiLink>();
+
     public virtual Module? Module { get; set; }
 }

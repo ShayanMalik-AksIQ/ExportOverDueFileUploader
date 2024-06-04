@@ -1,8 +1,5 @@
-﻿using Microsoft.IdentityModel.Tokens;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.RegularExpressions;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
@@ -84,67 +81,5 @@ public partial class GoodsDeclaration
 
     public long? FileAuditId { get; set; }
 
-
     public virtual ICollection<GD_FI_Link> GD_FI_Links { get; set; } = new List<GD_FI_Link>();
-    [NotMapped]
-    public List<FiNumberAndMode> FiNumbersAndModes
-    {
-        get
-        {
-            List<FiNumberAndMode> fiNumberAndModes = new List<FiNumberAndMode>();
-            if (LstfinInsUniqueNumbers != null)
-            {
-
-                foreach (var fi in LstfinInsUniqueNumbers.Split(","))
-                {
-                    if(fi.StartsWith("("))
-                    {
-                        fiNumberAndModes.Add(new FiNumberAndMode { ModeOFPayment = fi.Trim('(', ')') });
-                    }
-                    else
-                    {
-
-                    fiNumberAndModes.Add(Parse(fi));
-                    }
-                }
-
-            }
-            return fiNumberAndModes;
-        }
-    }
-
-    [NotMapped]
-    public DateTime? BLDateVale
-    {
-        get
-        {
-            if (!blDate.IsNullOrEmpty())
-            {
-
-                int a = Convert.ToInt16(blDate.Substring(6, 2));
-                int b = Convert.ToInt16(blDate.Substring(4, 2));
-                int d = Convert.ToInt16(blDate.Substring(0, 4));
-                return new DateTime(d, b, a);
-            }
-            else { return null; }
-        }
-    }
-
-    private static FiNumberAndMode Parse(string input) =>
-    new FiNumberAndMode
-    {
-        FiNumber = Regex.Match(input, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value,
-        ModeOFPayment = Regex.Match(input, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
-
-    };
 }
-
-
-public class FiNumberAndMode
-{
-    public string FiNumber { get; set; } // JSB-EXP-015272-11092023
-    public string ModeOFPayment { get; set; } // 308
-
-
-}
-

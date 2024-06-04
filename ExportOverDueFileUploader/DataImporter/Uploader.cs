@@ -103,7 +103,7 @@ namespace ExportOverDueFileUploader.DataImporter
                                     }
                                     if (fileType.Description == "FinancialInstrument_import")
                                     {
-                                        LinkGdToFI.SyncNewImportGd(auditTrail.Id, filters);
+                                        LinkGdToFI.SyncImportNewFi(auditTrail.Id, filters);
                                     }
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Sync Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
                                 }
@@ -144,7 +144,7 @@ namespace ExportOverDueFileUploader.DataImporter
                             Seriloger.LoggerInstance.Error(ex.Message);
                         }
                     }
-                    CustomRepo.RemoveDublicate(fileType.Description);
+                    //CustomRepo.RemoveDublicate(fileType.Description);
                    // FileReader.MoveFiles(fileType.FilePath, "*.xlsx", "*.csv");
 
 
@@ -171,13 +171,13 @@ namespace ExportOverDueFileUploader.DataImporter
                 if (dataTable != null)
                 {
                     var filters = ImportData(null, EntityName, auditTrail.Id, fileName,"", dataTable);
-                    if (EntityName == "GoodsDeclaration")
+                    if (EntityName == "GoodsDeclaration_Import")
                     {
-                        LinkGdToFI.SyncNewGd(auditTrail.Id, filters);
+                        LinkGdToFI.SyncNewImportGd(auditTrail.Id, filters);
                     }
-                    if (EntityName == "FinancialInstrument")
+                    if (EntityName == "FinancialInstrument_Import")
                     {
-                        LinkGdToFI.SyncNewFi(auditTrail.Id, filters);
+                        LinkGdToFI.SyncImportNewFi(auditTrail.Id, filters);
                     }
                     Seriloger.LoggerInstance.Information($"{EntityName} file:{fileName} Db Export Sucess");
                     auditTrail.Remarks = "Success";
@@ -588,7 +588,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 foreach (DataRow row in dataTable.Rows)
                 {
-                   
+                    fis.Add(row["FinInsUniqueNumber"].ToString());
                 }
                 return new NewFiGdFilterModel
                 {

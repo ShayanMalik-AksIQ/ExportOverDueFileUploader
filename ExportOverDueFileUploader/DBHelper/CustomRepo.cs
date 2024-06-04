@@ -59,7 +59,7 @@ namespace ExportOverDueFileUploader.DBHelper
             }
             var context = new ExportOverDueContext();
 
-            context.ImportGdFiLink.AddRange(v20fields);
+            context.ImportGdFiLinks.AddRange(v20fields);
             context.SaveChanges();
         }
         public static void RemoveLinkFI_GD_Link(List<long> openAccountGdId)
@@ -316,7 +316,7 @@ namespace ExportOverDueFileUploader.DBHelper
             {
                 var context = new ExportOverDueContext();
                 var result = new List<GoodsDeclaration_Import>();
-                var rawResult = context.GoodsDeclaration_Import
+                var rawResult = context.GoodsDeclaration_Imports
                         .Where(g => g.TenantId == TenantId && g.IsDeleted == false
                                && g.FileAuditId == fileId)
                         .Select(g => new
@@ -355,7 +355,7 @@ namespace ExportOverDueFileUploader.DBHelper
             {
                 var context = new ExportOverDueContext();
                 // var ids= context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE == "1524" && g.IsDeleted == false)
-                var rawResult = context.FinancialInstrument_Import.Where(g => g.TenantId == TenantId && g.IsDeleted == false && fis_gds.fis.Contains(g.FinInsUniqueNumber))
+                var rawResult = context.FinancialInstrument_Imports.Where(g => g.TenantId == TenantId && g.IsDeleted == false && fis_gds.fis.Contains(g.FinInsUniqueNumber))
                                                             .Select(f => new
                                                             {
                                                                 f.Id,
@@ -443,9 +443,9 @@ namespace ExportOverDueFileUploader.DBHelper
             {
                 var context = new ExportOverDueContext();
                 var result = new List<GoodsDeclaration_Import>();
-                var rawResult = context.GoodsDeclaration_Import
+                var rawResult = context.GoodsDeclaration_Imports
                         .Where(g => g.TenantId == TenantId  && g.IsDeleted == false
-                               && fis_gds.gds.Contains(g.gdNumber))
+                               && fis_gds.fis.Contains(g.FinInsUniqueNumber))
                        .Select(g => new
                        {
                            g.GDDate,
