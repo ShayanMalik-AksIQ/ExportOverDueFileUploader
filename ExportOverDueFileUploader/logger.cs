@@ -12,7 +12,7 @@ namespace ExportOverDueFileUploader
         private static ILogger ConfigureLogger()
         {
             return new LoggerConfiguration().WriteTo.Console()
-                .WriteTo.File("MounthlyLogs/Logs.txt", rollingInterval: RollingInterval.Month)
+                .WriteTo.File("DailyLogs/Logs.txt", rollingInterval: RollingInterval.Day)
                 .CreateLogger();
         }
     }

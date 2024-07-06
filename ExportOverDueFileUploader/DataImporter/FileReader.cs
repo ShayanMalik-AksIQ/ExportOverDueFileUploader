@@ -2,11 +2,13 @@
 using CsvHelper;
 using CsvHelper.Configuration;
 using ExportOverDueFileUploader.DBmodels;
+using FluentFTP;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Formats.Asn1;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -16,6 +18,62 @@ namespace ExportOverDueFileUploader.DataImporter
 {
     public static class FileReader
     {
+
+        public static void DownloadFromFtp(List<FileType> FileTypes)
+        {
+            ExportOverDueContext context = new ExportOverDueContext();
+            var settings = context.DefaultSettings;
+
+            string host = settings.FirstOrDefault(x=>x.Key=="FtpHost")?.Value;
+            string username= settings.FirstOrDefault(x => x.Key == "FtpUserName")?.Value;
+            string password= settings.FirstOrDefault(x => x.Key == "FtpPassword")?.Value;
+            string directoryBasePath= settings.FirstOrDefault(x => x.Key == "FtpBasePath")?.Value;
+
+
+            DateTime currentDate = DateTime.Now;
+            string formattedDate = currentDate.ToString("ddMMyyyy");
+            string directoryBase = $"{directoryBasePath}/{formattedDate}";
+            
+            using (FtpClient ftp = new FtpClient(host, username, password))
+            {
+                try
+                {
+                    ftp.Connect();
+                    Seriloger.LoggerInstance.Information("Ftp Connected");
+
+                    foreach (var type in FileTypes)
+                    {
+                        string directory = $"{directoryBase}/{type.Name}";
+                        if(ftp.DirectoryExists(directory))
+                        {
+                            ftp.SetWorkingDirectory(directory);
+                            foreach (FtpListItem item in ftp.GetListing(directory))
+                            {
+                                if (item.Name.EndsWith("csv") || item.Name.EndsWith("xlsx") || item.Name.EndsWith("xls"))
+                                { ///                          server path                 ftp remote path
+                                    ftp.DownloadFile($"{type.FilePath}\\{item.Name}", $"{directory}/{item.Name}");
+                                    Seriloger.LoggerInstance.Information($"File={directory}/{item.Name} Download Sucess for {type.Name} ");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Seriloger.LoggerInstance.Error($"Ftp directory={directory} Not Found");
+                        }
+                       
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    Seriloger.LoggerInstance.Error($"Error in Ftp Connection {ex.Message}");
+                }
+                finally
+                {
+                    ftp.Disconnect();
+                }
+            }
+        }
         public static string ReadAndValidateCsvFile(string filePath, int HeaderStart, string HeadersToValidate)
         {
             try
@@ -37,7 +95,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     var headers = csv.HeaderRecord.ToList();
                     var HeaderToValidate = HeadersToValidate.Split(",").ToList();
                     // Check if the headers match the expected headers
-                    if (HeaderToValidate.All(item => headers.Contains(item))&& headers.All(item => HeaderToValidate.Contains(item)))
+                    if (HeaderToValidate.All(item => headers.Contains(item)) && headers.All(item => HeaderToValidate.Contains(item)))
                     {
                         // Headers match, proceed to read CSV data into a list of dictionaries
                         List<Dictionary<string, object>> csvData = csv.GetRecords<dynamic>()
@@ -68,7 +126,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 Seriloger.LoggerInstance.Error(ex.Message);
                 return "Error";
             }
-                    }
+        }
 
         public static string ReadAndValidateExcelFile(string filePath, int HadderStart, string HaddersToValidator)
         {
@@ -97,12 +155,12 @@ namespace ExportOverDueFileUploader.DataImporter
                 }
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Seriloger.LoggerInstance.Error(ex.Message);
                 return $"Error :{ex.Message}";
             }
-        
+
         }
 
 
@@ -138,7 +196,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 // Get the headers as an array of strings
                 var headers = worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString());
 
-                var x= string.Join(",",worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString()).ToList());
+                var x = string.Join(",", worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString()).ToList());
                 var HeaderToValidate = HaddersToValidator.Split(",").ToList();
                 List<string> headerRow = new List<string>();
                 // Check if the headers match the expected headers
@@ -167,15 +225,15 @@ namespace ExportOverDueFileUploader.DataImporter
                         if (headerIndex < headerRow.Count)
                         {
                             var cellValue = worksheet.Cell(row, col).Value;
-                            if(cellValue.ToString()!=null && cellValue.ToString() != "")
+                            if (cellValue.ToString() != null && cellValue.ToString() != "")
                             {
-                                 rowData[headerRow[headerIndex]] =  cellValue.ToString();
+                                rowData[headerRow[headerIndex]] = cellValue.ToString();
                             }
                             else
                             {
                                 rowData[headerRow[headerIndex]] = null;
                             }
-                            
+
                         }
                     }
 
@@ -184,7 +242,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 return excelData;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Seriloger.LoggerInstance.Error(ex.Message);
                 throw;
@@ -217,7 +275,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
         public static void MoveFiles(string sourceFolder, params string[] fileExtensions)
         {
-           // Create "Old" folder if it doesn't exist
+            // Create "Old" folder if it doesn't exist
             string oldFolder = Path.Combine(sourceFolder, "Old");
             if (!Directory.Exists(oldFolder))
             {

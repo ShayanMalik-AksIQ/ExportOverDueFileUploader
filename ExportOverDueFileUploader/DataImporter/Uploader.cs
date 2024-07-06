@@ -49,6 +49,7 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 Seriloger.LoggerInstance.Information("Export Over Due Uploader Execution Begins ......");
                 ExportOverDueContext context = new ExportOverDueContext();
+                var settings = context.DefaultSettings.ToList();
                 var maxLoadingOrder = context.RequestStatuses.Where(x => x.Module.ModuleName.ToLower() == "Setups".ToLower()).Select(x => x.LoadingOrder).Max();
                 var lstFileTypes = context.FileTypes.Where(x => x.TenantId == AppSettings.TenantId && x.IsDeleted == false && x.RequestStatus.LoadingOrder == maxLoadingOrder).ToList();//aproved only
                 if (lstFileTypes.IsNullOrEmpty())
@@ -56,6 +57,9 @@ namespace ExportOverDueFileUploader.DataImporter
                     Seriloger.LoggerInstance.Error("Error:No File Type In DB..");
                     return;
                 }
+
+                FileReader.DownloadFromFtp(lstFileTypes);
+
                 foreach (var fileType in lstFileTypes)
                 {
                     Seriloger.LoggerInstance.Information($"File:{fileType.Name} Folder:{fileType.FilePath} In Progress....");
@@ -516,6 +520,12 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             try
             {
+                string host = "sftprpa.jsbl.com";
+                string username = "your_username";
+                string password = "your_password";
+                string directory = "/ExportOverdue";
+
+               
                 // Check if the folder exists
                 if (Directory.Exists(folderPath))
                 {
