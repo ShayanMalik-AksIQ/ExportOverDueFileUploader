@@ -92,15 +92,18 @@ namespace ExportOverDueFileUploader.DataImporter
                     csv.ReadHeader();
 
                     // Get the headers as an array of strings
+                   // var headers = csv.HeaderRecord.Where(header => header != null && header != "").ToList();
                     var headers = csv.HeaderRecord.ToList();
-                    var HeaderToValidate = HeadersToValidate.Split(",").ToList();
+                    
+                    var HeaderToValidate = HeadersToValidate.Split("||").ToList();
                     // Check if the headers match the expected headers
                     if (HeaderToValidate.All(item => headers.Contains(item)) && headers.All(item => HeaderToValidate.Contains(item)))
                     {
                         // Headers match, proceed to read CSV data into a list of dictionaries
                         List<Dictionary<string, object>> csvData = csv.GetRecords<dynamic>()
-                            .Select(record => ((IDictionary<string, object>)record).ToDictionary(kvp => kvp.Key, kvp => kvp.Value))
-                            .ToList();
+                    .Select(record => ((IDictionary<string, object>)record)
+                        .ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value?.ToString()))
+                    .ToList();
 
                         var settings = new JsonSerializerSettings
                         {
@@ -196,8 +199,8 @@ namespace ExportOverDueFileUploader.DataImporter
                 // Get the headers as an array of strings
                 var headers = worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString());
 
-                var x = string.Join(",", worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString()).ToList());
-                var HeaderToValidate = HaddersToValidator.Split(",").ToList();
+                var x = string.Join("||", worksheet.Row(HadderStart).Cells().Select(cell => cell.Value.ToString()).ToList());
+                var HeaderToValidate = HaddersToValidator.Split("||").ToList();
                 List<string> headerRow = new List<string>();
                 // Check if the headers match the expected headers
                 if (HeaderToValidate.All(item => headers.Contains(item)) && headers.All(item => HeaderToValidate.Contains(item)))

@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -58,7 +59,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     return;
                 }
 
-                FileReader.DownloadFromFtp(lstFileTypes);
+             FileReader.DownloadFromFtp(lstFileTypes);
 
                 foreach (var fileType in lstFileTypes)
                 {
@@ -115,6 +116,9 @@ namespace ExportOverDueFileUploader.DataImporter
                                     if (fileType.Description == "FinancialInstrument")
                                     {
                                         LinkGdToFI.SyncNewFi(auditTrail.Id, filters);
+                                    }if (fileType.Description == "DocumentaryCollection")
+                                    {
+                                        LinkGdToFI.SyncDcDueDates(fileType.Description);
                                     }
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Sync Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
                                 }
@@ -181,7 +185,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 context.SaveChanges();
                 if (dataTable != null)
                 {
-                    var filters = ImportData(null, EntityName, auditTrail.Id, fileName,"", dataTable);
+                    var filters = ImportData(null, EntityName, auditTrail.Id, fileName, "", dataTable);
                     if (EntityName == "GoodsDeclaration")
                     {
                         LinkGdToFI.SyncNewGd(auditTrail.Id, filters);
@@ -240,7 +244,14 @@ namespace ExportOverDueFileUploader.DataImporter
                     DataTable data = dataTable;
                     if (dataTable == null)
                     {
-                        data = JsonConvert.DeserializeObject<DataTable>(jsondata.ToString());
+                        JsonSerializerSettings settings = new JsonSerializerSettings
+                        {
+                            Converters = new List<JsonConverter> { new ForceStringConverter() },
+                            DateParseHandling = DateParseHandling.None
+                        };
+
+                        data = JsonConvert.DeserializeObject<DataTable>(jsondata, settings);
+                        //data = JsonConvert.DeserializeObject<DataTable>(jsondata.ToString());
                     }
                     else
                     {
@@ -271,7 +282,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     if (EntityName == "GoodsDeclaration")
                     {
-                       // msgIds = ExtractOkMessageId(data);
+                        // msgIds = ExtractOkMessageId(data);
                         data = data.Select("MESSAGE_TYPE = '102'").CopyToDataTable();
                         //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
                         data = data.Select("DIRECTION = 'REQUEST'").CopyToDataTable();
@@ -281,15 +292,15 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                     }
 
-                    if (EntityName == "LetterOfCredit")
-                    {
-                        data = data.Select("LCReference <> '' OR LCNo <> ''").CopyToDataTable();
-                    }
-                    if (EntityName == "DocumentaryCollection")
-                    {
-                        data = data.Select("CollectionNumber <> '' OR TransactionRef <> ''").CopyToDataTable();
-                    }
-                    
+                    //if (EntityName == "LetterOfCredit")
+                    //{
+                    //    data = data.Select("LCReference <> '' OR LCNo <> ''").CopyToDataTable();
+                    //}
+                    //if (EntityName == "DocumentaryCollection")
+                    //{
+                    //    data = data.Select("CollectionNumber <> '' OR TransactionRef <> ''").CopyToDataTable();
+                    //}
+
                     if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport")
                     {
 
@@ -298,18 +309,40 @@ namespace ExportOverDueFileUploader.DataImporter
                         data.Columns.Add("CreatorUserId");
 
                     }
-                     if(!coloumRename.IsNullOrEmpty())
+                    if (!coloumRename.IsNullOrEmpty())
                     {
                         ModifyDataTable(data, coloumRename?.Split("||").ToList());
 
                     }
+                    if (EntityName == "DocumentaryCollection")
+                    {
+                        // msgIds = ExtractOkMessageId(data);
+                        data = data.Select("GdNumber <> ''").CopyToDataTable();
+                        //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
+                        data = data.Select("FiNumber <> ''").CopyToDataTable();
+                        if (data.Rows.Count == 0)
+                        {
+                            return null;
+                        }
+                    }
+                    if (EntityName == "DocumentaryCollection")
+                    {
+                        // msgIds = ExtractOkMessageId(data);
+                        data = data.Select("GdNumber <> ''").CopyToDataTable();
+                        //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
+                        data = data.Select("FiNumber <> ''").CopyToDataTable();
+                        if (data.Rows.Count == 0)
+                        {
+                            return null;
+                        }
+                    }
+
                     data.Columns.Add("TenantId");
                     data.Columns.Add("FileAuditId");
 
                     if (EntityName == "RealizationReport")
                     {
-
-                        data = data.Select("RelAmount <> '-' AND RelAmount <> '' AND FiNumber <> '-' AND FiNumber <> '' AND RealizationDate <> '-' AND RealizationDate <> ''").CopyToDataTable();
+                        //    data = data.Select("RelAmount <> '-' AND RelAmount <> '' AND FiNumber <> '-' AND FiNumber <> '' AND RealizationDate <> '-' AND RealizationDate <> ''").CopyToDataTable();
                         data.Columns.Add("_RealizationDate");
                     }
                     if (EntityName == "GoodsDeclaration")
@@ -338,7 +371,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
                     foreach (DataRow _row in data.Rows)
                     {
-                        
+
                         if (data.Columns.Contains("ID"))
                         {
                             _row["I_D"] = _row["ID"];
@@ -347,12 +380,13 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             _row["TRANSMISSION_DATETIME"] = GdImporter.ConvertTransmissionDate(_row["TRANSMISSION_DATETIME"].ToString());
                         }
-                        if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport") { 
-                        
-                        _row["CreationTime"] = DateTimeNow;
-                        _row["IsDeleted"] = false;
-                        _row["CreatorUserId"] = null;
-                        
+                        if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport")
+                        {
+
+                            _row["CreationTime"] = DateTimeNow;
+                            _row["IsDeleted"] = false;
+                            _row["CreatorUserId"] = null;
+
                         }
                         _row["TenantId"] = tenantId;
                         _row["FileAuditId"] = FileID;
@@ -387,13 +421,9 @@ namespace ExportOverDueFileUploader.DataImporter
                                 newGdFis.AddRange(fis);
                             }
                         }
-
                         else if (EntityName == "FinancialInstrument")
                         {
                             FiImporter.LoadFIInfoColoums(_row);
-
-
-
                         }
                         else if (EntityName == "BcaData")
                         {
@@ -402,9 +432,18 @@ namespace ExportOverDueFileUploader.DataImporter
                         else if (EntityName == "ITRS_Data")
                         {
                             ITRS_Importer.LoadITRSInfoColoums(_row);
-                        }else if (EntityName == "RealizationReport")
+                        }
+                        else if (EntityName == "RealizationReport")
                         {
                             ITRS_Importer.LoadRelRptInfoColoums(_row);
+                        }
+                        else if (EntityName == "LetterOfCredit" || EntityName == "DocumentaryCollection")
+                        {
+                            LodgmentImporter.LoadLodgmentColoums(_row,EntityName);
+                        }
+                        else if (EntityName == "ITRS_Data" )
+                        {
+                            LodgmentImporter.LoadLodgmentColoums(_row, EntityName);
                         }
                     }
                     if (data.Columns.Contains("ID"))
@@ -450,7 +489,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     if (!lstCobFis.IsNullOrEmpty())
                     {
                         //Executeion(cobFiTable, "FinancialInstrument", fileName);
-                        
+
                     }
 
 
@@ -525,7 +564,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 string password = "your_password";
                 string directory = "/ExportOverdue";
 
-               
+
                 // Check if the folder exists
                 if (Directory.Exists(folderPath))
                 {
@@ -663,27 +702,46 @@ namespace ExportOverDueFileUploader.DataImporter
 
         static void ModifyDataTable(DataTable table, List<string> renameInput)
         {
-            // Remove columns not present in the list to keep
+
             foreach (var renamePair in renameInput)
             {
-                var pair = renamePair.Split(',').Select(name => name.Trim()).ToArray();
-                if (pair.Length == 2 && table.Columns.Contains(pair[0]))
+                if (!renamePair.Contains(','))
                 {
-                    if (pair[1].ToLower() == "remove")
-                    {
-                        table.Columns.Remove(pair[0]);
-                    }
-                    else
+
+                    table.Columns.Remove(renamePair);
+
+                }
+                else
+                {
+                    var pair = renamePair.Split(',').Select(name => name.Trim()).ToArray();
+                    if (pair.Length == 2 && table.Columns.Contains(pair[0]))
                     {
                         table.Columns[pair[0]].ColumnName = pair[1];
                     }
                 }
+
 
             }
 
         }
 
     }
+    public class ForceStringConverter : JsonConverter
+    {
+        public override bool CanConvert(Type objectType)
+        {
+            return objectType == typeof(string);
+        }
 
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            return JToken.Load(reader).ToString();
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            writer.WriteValue(value);
+        }
+    }
 
 }

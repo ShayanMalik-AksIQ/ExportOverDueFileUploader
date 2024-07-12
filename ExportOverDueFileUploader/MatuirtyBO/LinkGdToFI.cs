@@ -12,12 +12,32 @@ using ExportOverDueFileUploader.DBHelper;
 using ExportOverDueFileUploader.DataImporter;
 using Serilog;
 using DocumentFormat.OpenXml.VariantTypes;
+using Microsoft.EntityFrameworkCore;
 
 namespace ExportOverDueFileUploader.MatuirtyBO
 {
     public static class LinkGdToFI
     {
-        
+        public static void SyncDcDueDates(string Entity)
+        {
+
+            try
+            {
+                string Query = "";
+                var context = new ExportOverDueContext();
+                Query = $"EXEC UpdateMatruityDateFromCollection";
+                var result = context.Database.ExecuteSqlRaw(Query);
+                Seriloger.LoggerInstance.Information($"{Entity} of Sync Sucess ");
+
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error RemoveDublicateGds Data", ex.Message);
+
+            }
+
+
+        }
 
         //public static List<V20DateData> LoadMatureGds()
         //{
@@ -204,7 +224,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             var FiData = lstfis.Where(x => x.finInsUniqueNumber == item.FiNumber).FirstOrDefault();
                             if (item.FiNumber.IsNullOrEmpty())
                             {
-                               // continue;
+                                // continue;
                             }
                             if (FiData != null && !item.FiNumber.IsNullOrEmpty())
                             {
@@ -327,14 +347,14 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                         type = "Open Account",
                                         MatruityDate = gdDate.ToString("dd-MMM-yyy"),
                                         _MatruityDate = gdDate
-                                    }) ;
+                                    });
                                 }
-                                else 
+                                else
                                 {
                                     GdV20Dates.Add(new GD_FI_Link()
                                     {
                                         GdId = gd.Id,
-                                     //   FiId = FiData == null ? null : FiData.Id,
+                                        //   FiId = FiData == null ? null : FiData.Id,
                                         type = "Open Account",
                                         MatruityDate = gdDate.ToString("dd-MMM-yyy"),
                                         _MatruityDate = gdDate
@@ -381,7 +401,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                 Seriloger.LoggerInstance.Information($" Sync New Fis In Process.... :");
                 ExportOverDueContext context = new ExportOverDueContext();
                 List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
-                List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(fis_OpenGds,AppSettings.TenantId).DistinctBy(gd=>gd.Id).ToList();//gd that newly came in 
+                List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(fis_OpenGds, AppSettings.TenantId).DistinctBy(gd => gd.Id).ToList();//gd that newly came in 
 
                 if (lstgds.Count == 0)
                 {
@@ -409,10 +429,10 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                         foreach (var item in gd.FiNumbersAndModes)
                         {
                             DateTime gdCreationDate = gd.GDDate.Value;
-                            DBmodels.FinancialInstrument FiData =new DBmodels.FinancialInstrument();
+                            DBmodels.FinancialInstrument FiData = new DBmodels.FinancialInstrument();
                             if (item.FiNumber != null && item.FiNumber != "")
                             {
-                               FiData = lstfis.Where(x => x.finInsUniqueNumber == item.FiNumber).FirstOrDefault();
+                                FiData = lstfis.Where(x => x.finInsUniqueNumber == item.FiNumber).FirstOrDefault();
                             }
                             if (FiData != null && !item.FiNumber.IsNullOrEmpty())
                             {
@@ -568,7 +588,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     V20Dates.AddRange(GdV20Dates);
                 }
                 CustomRepo.InsertFI_GD_Link(V20Dates);
-               // CustomRepo.RemoveLinkFI_GD_Link(OpengdIds);
+                // CustomRepo.RemoveLinkFI_GD_Link(OpengdIds);
                 return "Sucess";
             }
             catch (Exception ex)

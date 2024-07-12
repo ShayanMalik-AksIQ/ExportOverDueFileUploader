@@ -12,6 +12,34 @@ namespace ExportOverDueFileUploader.DataImporter
     {
         public static void LoadITRSInfoColoums(DataRow dataRow)
         {
+            {
+
+                try
+                {
+                    var date = dataRow["RealizationDate"].ToString().Split("/");
+                    if (date.Length == 3)
+                    {
+                        int d = Convert.ToInt16(date[1]);
+                        int m = Convert.ToInt16(date[0]);
+                        int y = Convert.ToInt16(date[2]);
+
+
+                        dataRow["RealizationDate"] = new DateTime(y, m, d);
+
+                    }
+                    else
+                    {
+                        dataRow["RealizationDate"] = null;
+                    }
+
+                }
+                catch
+                {
+
+                    dataRow["RealizationDate"] = null;
+
+                }
+            }
 
         }
         public static void LoadRelRptInfoColoums(DataRow dataRow)
