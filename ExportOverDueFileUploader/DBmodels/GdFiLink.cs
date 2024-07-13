@@ -3,19 +3,15 @@ using System.Collections.Generic;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
-public partial class RequestStatus
+public partial class GdFiLink
 {
     public long Id { get; set; }
 
-    public string? DisplayName { get; set; }
+    public string? Type { get; set; }
 
-    public string? StatusCode { get; set; }
+    public long? FiId { get; set; }
 
-    public string? ColorCode { get; set; }
-
-    public long? ModuleID { get; set; }
-
-    public int LoadingOrder { get; set; }
+    public long? GdId { get; set; }
 
     public int TenantId { get; set; }
 
@@ -33,9 +29,9 @@ public partial class RequestStatus
 
     public DateTime? DeletionTime { get; set; }
 
-    public virtual ICollection<ComparisonResult> ComparisonResults { get; set; } = new List<ComparisonResult>();
+    public virtual List<ComparisonResult> ComparisonResults { get; set; }
 
-    public virtual ICollection<FileType> FileTypes { get; set; } = new List<FileType>();
+    public virtual FinancialInstrumentImport? Fi { get; set; }
 
-    public virtual Module? Module { get; set; }
+    public virtual GoodsDeclarationImport? Gd { get; set; }
 }

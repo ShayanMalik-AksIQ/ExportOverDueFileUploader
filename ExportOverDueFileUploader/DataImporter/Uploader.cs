@@ -32,17 +32,9 @@ namespace ExportOverDueFileUploader.DataImporter
         private readonly ILogger _logger;
         public Uploader()
         {
-            //_logger = new Logger<>();
-            TableNames.Add("FileType");
-            TableNames.Add("GoodsDeclaration");
-            TableNames.Add("FinancialInstrument");
-            TableNames.Add("LetterOfCredit");
-            TableNames.Add("DocumentaryCollection");
-            TableNames.Add("BcaData");
-            TableNames.Add("ITRS_Data");
-            TableNames.Add("NtnConversion");
-            TableNames.Add("RealizationReport");
-
+            TableNames.Add("FinancialInstrumentImport");
+            TableNames.Add("GoodsDeclarationImport");
+         
         }
         public void Executeion()
         {
@@ -59,7 +51,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     return;
                 }
 
-             FileReader.DownloadFromFtp(lstFileTypes);
+           //  FileReader.DownloadFromFtp(lstFileTypes);
 
                 foreach (var fileType in lstFileTypes)
                 {
