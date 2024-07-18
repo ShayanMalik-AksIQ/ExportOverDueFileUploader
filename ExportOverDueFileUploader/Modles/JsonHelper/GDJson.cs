@@ -27,23 +27,23 @@ namespace ExportOverDueFileUploader.Modles.JsonHelper
 
    
 
-    public class Data
-    {
+    //public class Data
+    //{
 
-        public List<Data>? gdInfo { get; set; }
+    //    public List<Data>? gdInfo { get; set; }
         
-        public string gdNumber { get; set; }
-        public string gdStatus { get; set; }
-        public string consignmentCategory { get; set; }
+    //    public string gdNumber { get; set; }
+    //    public string gdStatus { get; set; }
+    //    public string consignmentCategory { get; set; }
 
-        public string blAwbDate { get; set; }
-        // Add other properties as needed
-        public ConsignorConsigneeInfo? consignorConsigneeInfo { get; set; }
-        public FinancialInformation? financialInformation { get; set; }
-        public GeneralInformation? generalInformation { get; set; }
-        public FinancialInfo? financialInfo { get; set; }
-        public object? itemInformation { get; set; }
-    }
+    //    public string blAwbDate { get; set; }
+    //    // Add other properties as needed
+    //    public ConsignorConsigneeInfo? consignorConsigneeInfo { get; set; }
+    //    public FinancialInformation? financialInformation { get; set; }
+    //    public GeneralInformation? generalInformation { get; set; }
+    //    public FinancialInfo? financialInfo { get; set; }
+    //    public object? itemInformation { get; set; }
+    //}
 
     public class ConsignorConsigneeInfo
     {
@@ -94,13 +94,13 @@ namespace ExportOverDueFileUploader.Modles.JsonHelper
 
     public class FinancialInfo
     {
+        public string importerIban { get; init; }
         public string modeOfPayment { get; init; }
         public string finInsUniqueNumber { get; init; }
         public string currency { get; init; }
         public double totalDeclaredValue { get; init; }
         public double exchangeRate { get; init; }
     }
-
     public class FinancialInstrument
     {
         public string exporterIban { get; set; }

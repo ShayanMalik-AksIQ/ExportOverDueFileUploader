@@ -34,7 +34,7 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             TableNames.Add("FinancialInstrumentImport");
             TableNames.Add("GoodsDeclarationImport");
-         
+
         }
         public void Executeion()
         {
@@ -51,7 +51,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     return;
                 }
 
-           //  FileReader.DownloadFromFtp(lstFileTypes);
+                //  FileReader.DownloadFromFtp(lstFileTypes);
 
                 foreach (var fileType in lstFileTypes)
                 {
@@ -101,16 +101,13 @@ namespace ExportOverDueFileUploader.DataImporter
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Db Export Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
                                     auditTrail.Remarks = "Success";
                                     auditTrail.Success = true;
-                                    if (fileType.Description == "GoodsDeclaration")
+                                    if (fileType.Description == "GoodsDeclarationImport")
                                     {
-                                        LinkGdToFI.SyncNewGd(auditTrail.Id, filters);
+                                        LinkGdToFI.SyncNewImportGd(auditTrail.Id, filters);
                                     }
-                                    if (fileType.Description == "FinancialInstrument")
+                                    if (fileType.Description == "FinancialInstrumentImport")
                                     {
-                                        LinkGdToFI.SyncNewFi(auditTrail.Id, filters);
-                                    }if (fileType.Description == "DocumentaryCollection")
-                                    {
-                                        LinkGdToFI.SyncDcDueDates(fileType.Description);
+                                        LinkGdToFI.SyncImportNewFi(auditTrail.Id, filters);
                                     }
                                     Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Sync Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
                                 }
@@ -151,7 +148,7 @@ namespace ExportOverDueFileUploader.DataImporter
                             Seriloger.LoggerInstance.Error(ex.Message);
                         }
                     }
-                    CustomRepo.RemoveDublicate(fileType.Description);
+                    //CustomRepo.RemoveDublicate(fileType.Description);
                     FileReader.MoveFiles(fileType.FilePath, "*.xlsx", "*.csv");
 
 
@@ -225,9 +222,7 @@ namespace ExportOverDueFileUploader.DataImporter
         }
         public NewFiGdFilterModel ImportData(string jsondata, string EntityName, long FileID, string fileName, string coloumRename, DataTable dataTable = null)
         {
-            cobReturn result = new cobReturn();
-            List<FinancialInstrumentInfo> lstCobFis = new List<FinancialInstrumentInfo>();
-            List<string?> msgIds = new List<string?>();
+            NewFiGdFilterModel filter = new NewFiGdFilterModel();
             if (TableNames.Contains(EntityName))
             {
                 try
@@ -243,28 +238,20 @@ namespace ExportOverDueFileUploader.DataImporter
                         };
 
                         data = JsonConvert.DeserializeObject<DataTable>(jsondata, settings);
-                        //data = JsonConvert.DeserializeObject<DataTable>(jsondata.ToString());
                     }
                     else
                     {
                         data = dataTable;
                     }
                     DataTable BcaData = new DataTable();
-                    if (EntityName == "FinancialInstrument" && dataTable == null)
+                    if (EntityName == "FinancialInstrument")
                     {
-                        var bca = data.Select("TRANSACTION_TYPE = '1526'");
+
                         var fis = data.Select("TRANSACTION_TYPE = '1524'");
-                        if (bca.Count() != 0)
-                        {
-                            BcaData = bca.CopyToDataTable();
-                        }
+
                         if (fis.Count() != 0)
                         {
                             data = fis.CopyToDataTable();
-                        }
-                        if (BcaData != null && BcaData.Rows.Count > 0)
-                        {
-                            Executeion(BcaData, "BcaData", fileName);
                         }
                         if (data.Rows.Count == 0)
                         {
@@ -274,9 +261,8 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     if (EntityName == "GoodsDeclaration")
                     {
-                        // msgIds = ExtractOkMessageId(data);
-                        data = data.Select("MESSAGE_TYPE = '102'").CopyToDataTable();
-                        //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
+
+                        data = data.Select("ProcessCode = '101'").CopyToDataTable();
                         data = data.Select("DIRECTION = 'REQUEST'").CopyToDataTable();
                         if (data.Rows.Count == 0)
                         {
@@ -284,232 +270,80 @@ namespace ExportOverDueFileUploader.DataImporter
                         }
                     }
 
-                    //if (EntityName == "LetterOfCredit")
-                    //{
-                    //    data = data.Select("LCReference <> '' OR LCNo <> ''").CopyToDataTable();
-                    //}
-                    //if (EntityName == "DocumentaryCollection")
-                    //{
-                    //    data = data.Select("CollectionNumber <> '' OR TransactionRef <> ''").CopyToDataTable();
-                    //}
 
-                    if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport")
-                    {
 
-                        data.Columns.Add("CreationTime");
-                        data.Columns.Add("IsDeleted");
-                        data.Columns.Add("CreatorUserId");
+                    data.Columns.Add("CreationTime");
+                    data.Columns.Add("IsDeleted");
+                    data.Columns.Add("CreatorUserId");
 
-                    }
                     if (!coloumRename.IsNullOrEmpty())
                     {
                         ModifyDataTable(data, coloumRename?.Split("||").ToList());
 
                     }
-                    if (EntityName == "DocumentaryCollection")
-                    {
-                        // msgIds = ExtractOkMessageId(data);
-                        data = data.Select("GdNumber <> ''").CopyToDataTable();
-                        //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
-                        data = data.Select("FiNumber <> ''").CopyToDataTable();
-                        if (data.Rows.Count == 0)
-                        {
-                            return null;
-                        }
-                    }
-                    if (EntityName == "DocumentaryCollection")
-                    {
-                        // msgIds = ExtractOkMessageId(data);
-                        data = data.Select("GdNumber <> ''").CopyToDataTable();
-                        //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
-                        data = data.Select("FiNumber <> ''").CopyToDataTable();
-                        if (data.Rows.Count == 0)
-                        {
-                            return null;
-                        }
-                    }
 
                     data.Columns.Add("TenantId");
                     data.Columns.Add("FileAuditId");
 
-                    if (EntityName == "RealizationReport")
+                    if (EntityName == "GoodsDeclarationImport")
                     {
-                        //    data = data.Select("RelAmount <> '-' AND RelAmount <> '' AND FiNumber <> '-' AND FiNumber <> '' AND RealizationDate <> '-' AND RealizationDate <> ''").CopyToDataTable();
-                        data.Columns.Add("_RealizationDate");
+                        data = data.Select("ProcessCode = '101'").CopyToDataTable();
+                        AddColumns(data, GdImporter.GdImportColumns);
                     }
-                    if (EntityName == "GoodsDeclaration")
+                    else if (EntityName == "FinancialInstrumentImport")
                     {
-                        AddColumns(data, GdImporter.GdColumns);
-                    }
-                    else if (EntityName == "FinancialInstrument")
-                    {
-
-                        AddColumns(data, FiImporter.FiColoums);
-                        if (dataTable != null)
-                        {
-                            data.Columns.Add("CREATED_DATETIME");
-                            data.Columns.Add("TRANSACTION_TYPE");
-                        }
-                    }
-                    else if (EntityName == "BcaData")
-                    {
-                        AddColumns(data, FiImporter.BcaColoums);
-                    }
-                    if (data.Columns.Contains("ID"))
-                    {
-                        data.Columns.Add("I_D");
+                        data = data.Select("MethodId = '1520'").CopyToDataTable();
+                        AddColumns(data, FiImporter.FiImportColoums);
                     }
                     int tenantId = AppSettings.TenantId;
 
                     foreach (DataRow _row in data.Rows)
                     {
 
-                        if (data.Columns.Contains("ID"))
-                        {
-                            _row["I_D"] = _row["ID"];
-                        }
-                        if (data.Columns.Contains("TRANSMISSION_DATETIME"))
-                        {
-                            _row["TRANSMISSION_DATETIME"] = GdImporter.ConvertTransmissionDate(_row["TRANSMISSION_DATETIME"].ToString());
-                        }
-                        if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport")
-                        {
 
-                            _row["CreationTime"] = DateTimeNow;
-                            _row["IsDeleted"] = false;
-                            _row["CreatorUserId"] = null;
-
-                        }
+                        _row["CreationTime"] = DateTimeNow;
+                        _row["IsDeleted"] = false;
+                        _row["CreatorUserId"] = null;
                         _row["TenantId"] = tenantId;
                         _row["FileAuditId"] = FileID;
-                        //data.Columns.Add("_RealizationDate");
 
-                        if (EntityName == "GoodsDeclaration")
+                        if (EntityName == "GoodsDeclarationImport")
                         {
-                            if ((!_row["MESSAGE_ID"].ToString().IsNullOrEmpty()) && _row["DIRECTION"].ToString() == "REQUEST" && msgIds.Contains(_row["MESSAGE_ID"].ToString()) && _row["MESSAGE_TYPE"].ToString() != "101")
-                            {
-                                _row["STATUS_CODE"] = "200";// custom
-                            }
-                            else
-                            {
-                                _row["STATUS_CODE"] = "500";
-                            }
-                            List<string> fis = new List<string>();
-                            if (_row["MESSAGE_TYPE"].ToString() == "307")
-                            {
-                                result = GdImporter.LoadCobGdInfoColoums(_row);
-                                fis = result?.fiNumbers;
-                                if (result?.cobFi != null)
-                                {
-                                    lstCobFis.Add(result.cobFi);
-                                }
-                            }
-                            else
-                            {
-                                fis = GdImporter.LoadGdInfoColoums(_row);
-                            }
-                            if (!fis.IsNullOrEmpty())
-                            {
-                                newGdFis.AddRange(fis);
-                            }
-                        }
-                        else if (EntityName == "FinancialInstrument")
-                        {
-                            FiImporter.LoadFIInfoColoums(_row);
-                        }
-                        else if (EntityName == "BcaData")
-                        {
-                            FiImporter.LoadBcaInfoColoums(_row);
-                        }
-                        else if (EntityName == "ITRS_Data")
-                        {
-                            ITRS_Importer.LoadITRSInfoColoums(_row);
-                        }
-                        else if (EntityName == "RealizationReport")
-                        {
-                            ITRS_Importer.LoadRelRptInfoColoums(_row);
-                        }
-                        else if (EntityName == "LetterOfCredit" || EntityName == "DocumentaryCollection")
-                        {
-                            LodgmentImporter.LoadLodgmentColoums(_row,EntityName);
-                        }
-                        else if (EntityName == "ITRS_Data" )
-                        {
-                            LodgmentImporter.LoadLodgmentColoums(_row, EntityName);
-                        }
-                    }
-                    if (data.Columns.Contains("ID"))
-                    {
-                        data.Columns.Remove("ID");
-                    }
-                    if (result?.aditionalRows?.Count() > 0)
-                    {
-                        DataTable cobData = data.Clone();
-                        foreach (DataRow row in result?.aditionalRows)
-                        {
-                            object[] rowArray = row.ItemArray;
-                            cobData.Rows.Add(rowArray);
-                        }
-                        data.Merge(cobData);
-                    }
-                    DataTable cobFiTable = new DataTable();
-                    if (!lstCobFis.IsNullOrEmpty())
-                    {
-                        cobFiTable.Columns.Add("PAYLOAD", typeof(string));
-                        lstCobFis = lstCobFis
-                            .Where(x => !string.IsNullOrEmpty(x.finInsUniqueNumber)) // Filter out null or empty finInsUniqueNumber
-                            .GroupBy(x => x.finInsUniqueNumber)
-                            .Select(group => group.First())
-                            .ToList();
+                            GdImporter.LoadImportGdInfoColoums(_row);
 
-                        foreach (var fi in lstCobFis)
-                        {
-                            var jsonString = JsonConvert.SerializeObject(fi);
-                            DataRow row = cobFiTable.NewRow();
-                            row["PAYLOAD"] = jsonString;
-                            cobFiTable.Rows.Add(row);
                         }
-                        //   Executeion(cobFiTable, "FinancialInstrument", fileName);
-                        // ImportData(null, "FinancialInstrument", FileID, fileName, cobFiTable);
-                    }
-                    if (EntityName == "GoodsDeclaration")
-                    {
-                        //data = data.Select("STATUS_CODE = '200'").CopyToDataTable();
-                    }
-                    BulkInsert(data, EntityName);
-                    CustomRepo.RemoveDublicate(EntityName, FileID);
-                    if (!lstCobFis.IsNullOrEmpty())
-                    {
-                        //Executeion(cobFiTable, "FinancialInstrument", fileName);
-
+                        else if (EntityName == "FinancialInstrumentImport")
+                        {
+                            FiImporter.LoadImportFIInfoColoums(_row);
+                        } 
                     }
 
+                        BulkInsert(data, EntityName);
 
-                    NewFiGdFilterModel filter = new NewFiGdFilterModel();
+                        if (EntityName == "GoodsDeclarationImport")
+                        {
+                            filter = ExtractFiNumberFromNewGDs(data);
+                        }
+                        if (EntityName == "FinancialInstrumentImport")
+                        {
+                            filter = ExtractFilisterList(data);
+                        }
 
-                    if (EntityName == "GoodsDeclaration")
-                    {
-                        filter = ExtractFiNumberFromNewGDs(data);
-                    }
-                    if (EntityName == "FinancialInstrument")
-                    {
-                        filter = ExtractFilisterList(data);
-                    }
-
-                    return filter;
+                    
+                        return filter;
                 }
                 catch (Exception ex)
                 {
                     Seriloger.LoggerInstance.Error($"Error In Import Data:{ex.Message}");
                     return null;
-                }
+                } 
             }
             else
             {
                 Seriloger.LoggerInstance.Error($"Incorrect Table Name ");
                 return null;
             }
-        }
+        } 
         public void BulkInsert(DataTable dt, string entityname)
         {
             try
@@ -587,40 +421,10 @@ namespace ExportOverDueFileUploader.DataImporter
                 foreach (DataRow row in dataTable.Rows)
                 {
 
-                    string LstfinInsUniqueNumbers = row["LstfinInsUniqueNumbers"].ToString();
-                    List<FiNumberAndMode> fiNumberAndModes = new List<FiNumberAndMode>();
-                    if (LstfinInsUniqueNumbers != null && LstfinInsUniqueNumbers != "")
+                    string finInsUniqueNumbers = row["FinInsUniqueNumber"].ToString();
+                    if (finInsUniqueNumbers != null && finInsUniqueNumbers != "")
                     {
-                        foreach (var fi in LstfinInsUniqueNumbers.Split(","))
-                        {
-                            var x = new FiNumberAndMode
-                            {
-                                FiNumber = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value ?? null,
-                                ModeOFPayment = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
-                            };
-                            if (x != null || !x.FiNumber.IsNullOrEmpty())
-                            {
-
-                                fis.Add(x.FiNumber);
-                            }
-                            if (fi == "(305)")
-                            {
-                                if (row["gdNumber"] != null)
-                                {
-                                    var gdnum = row["gdNumber"].ToString();
-                                    if (gdnum.IsNullOrEmpty())
-                                    {
-
-                                    }
-                                    gds.Add(row["gdNumber"].ToString());
-                                }
-                            }
-                            if (x == null || x.FiNumber.IsNullOrEmpty() && fi != "(305)")
-                            {
-
-
-                            }
-                        }
+                        fis.Add(finInsUniqueNumbers);
                     }
 
 
@@ -630,9 +434,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     fis = fis.Where(x => x != null && x != "")
                              .Distinct()
                              .ToList(),
-                    gds = gds.Where(x => x != null && x != "")
-                                      .Distinct()
-                                      .ToList()
+                    gds = null
                 };
             }
             catch
@@ -650,12 +452,9 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 foreach (DataRow row in dataTable.Rows)
                 {
-                    string gd = row["openAccountGdNumber"].ToString();
-                    string fi = row["finInsUniqueNumber"].ToString();
-                    if (gd != "")
-                    {
-                        gdNumberList.Add(gd);
-                    }
+                   
+                    string fi = row["FinInsUniqueNumber"].ToString();
+                   
                     if (fi != "")
                     {
                         fis.Add(fi);
@@ -666,9 +465,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     fis = fis.Where(x => x != null && x != "")
                              .Distinct()
                              .ToList(),
-                    gds = gdNumberList.Where(x => x != null && x != "")
-                                      .Distinct()
-                                      .ToList()
+                    gds = null
                 };
             }
             catch

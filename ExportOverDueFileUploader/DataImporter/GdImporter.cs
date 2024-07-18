@@ -7,6 +7,7 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
@@ -34,6 +35,17 @@ namespace ExportOverDueFileUploader.DataImporter
             "finInsUniqueNumber",
             "modeOfPayment"
         };
+        public static List<string> GdImportColumns = new List<string>
+        {
+            "gdNumber",
+            "gdStatus",
+            "ImporterIban",
+            "ImporterName",
+            "ImporterNtn",
+            "ModeOfPayment",
+            "FinInsUniqueNumber",
+            "GDDate"
+        };
 
         public static List<string> LoadGdInfoColoums(DataRow _row)
         {
@@ -46,28 +58,14 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 if (payload?.data?.financialInformation?.financialInstrument != null)
                 {
-                    foreach (var financialInstrument in payload?.data?.financialInformation?.financialInstrument)
-                    {
-                        if (financialInstrument.finInsUniqueNumber != null)
-                        {
 
-                            fiNumber.Add(financialInstrument.finInsUniqueNumber?.ToString());
-                        }
-                        lstFiNumber.Add($"{financialInstrument.finInsUniqueNumber?.ToString()}({financialInstrument.modeOfPayment?.ToString()})");
-                    }
-                    _row["totalDeclaredValue"] = payload?.data?.financialInformation?.totalDeclaredValue;
-                    _row["CurrencyCode"] = payload?.data?.financialInformation?.currency?.ToString();
-                    _row["exchangeRate"] = payload?.data?.financialInformation?.exchangeRate ?? 0;
 
 
                 }
                 else if (payload?.data?.financialInfo != null)
                 {
-                    _row["finInsUniqueNumber"] = payload?.data?.financialInfo?.finInsUniqueNumber;
-                    _row["modeOfPayment"] = payload?.data?.financialInfo?.modeOfPayment;
-                    _row["totalDeclaredValue"] = payload?.data?.financialInfo?.totalDeclaredValue;
-                    _row["CurrencyCode"] = payload?.data?.financialInfo?.currency?.ToString();
-                    _row["exchangeRate"] = payload?.data?.financialInfo?.exchangeRate ?? 0;
+                    _row["FinInsUniqueNumber"] = payload?.data?.financialInfo?.finInsUniqueNumber;
+                    _row["ModeOfPayment"] = payload?.data?.financialInfo?.modeOfPayment;
                 }
 
                 _row["gdNumber"] = payload?.data?.gdNumber?.ToString();
@@ -96,94 +94,67 @@ namespace ExportOverDueFileUploader.DataImporter
 
         }
 
-        public class  cobReturn{
 
-            public List<string> fiNumbers { get; set; }
-            public List<DataRow> aditionalRows { get; set; }
-            public FinancialInstrumentInfo cobFi { get; set; }
-        }
 
-        public static cobReturn LoadCobGdInfoColoums(DataRow _row)
+
+        public static List<string> LoadImportGdInfoColoums(DataRow _row)
         {
             try
             {
-                FinancialInstrumentInfo cobFi= new FinancialInstrumentInfo();
+                List<string> fiNumber = new List<string>();
+                GdImportJson payload = JsonConvert.DeserializeObject<GdImportJson>(_row["PAYLOAD"]?.ToString());
+                List<string> lstFiNumber = new List<string>();
+                List<string> lstModeOfPayment = new List<string>();
 
-                if (!_row["PAYLOAD"].ToString().IsNullOrEmpty())
+                if (payload?.data?.financialInfo != null)
                 {
-                    List<string> fiNumber = new List<string>();
-                    List<DataRow> dataRows = new List<DataRow>();
-                     var x = _row["PAYLOAD"]?.ToString();
-                    cobPayLoad payload = JsonConvert.DeserializeObject<cobPayLoad>(_row["PAYLOAD"]?.ToString());
-                    if (payload?.data?.gdInfo.Count()>1)
-                    {
-                        
-                    }
-                    var CountGds = payload?.data?.gdInfo.Count();
-                        int i = 0;
-                    foreach (var gd in payload?.data?.gdInfo)
-                    {
-                        if (gd != null)
-                        {
-                            List<string> lstFiNumber = new List<string>();
-                            List<string> lstModeOfPayment = new List<string>();
-                            if (gd?.financialInfo != null)
-                            {
-                                lstFiNumber.Add($"{gd.financialInfo?.finInsUniqueNumber?.ToString()}({gd.financialInfo.modeOfPayment?.ToString()})");
-
-                                _row["totalDeclaredValue"] = gd.financialInfo.totalDeclaredValue;
-                                _row["CurrencyCode"] = gd.financialInfo.currency?.ToString();
-                                _row["exchangeRate"] = gd?.financialInfo.exchangeRate ?? 0;
-
-                                if (gd.financialInfo?.finInsUniqueNumber != null)
-                                {
-                                    fiNumber.Add(gd?.financialInfo?.finInsUniqueNumber?.ToString());
-                                }
-
-                            }
-                            _row["gdNumber"] = gd.gdNumber?.ToString();
-                            _row["gdStatus"] = gd.gdStatus?.ToString();
-                            _row["consigneeName"] = gd.consignorConsigneeInfo?.consigneeName.ToString();
-                            _row["LstfinInsUniqueNumbers"] = lstFiNumber.Count > 0 ? string.Join(",", lstFiNumber) : null;
-                            _row["blDate"] = gd.blawbDate?.ToString();
-                            _row["ShipmentDate"] = gd.blawbDate?.ToString();
-                            _row["itemInformationJson"] = gd.itemInformation != null ? JsonConvert.SerializeObject(gd.itemInformation) : null;
-                            _row["ShipmentCity"] = gd.generalInformation?.destinationCountry;//ask
-                            _row["blDate"] = gd.blawbDate?.ToString();
-
-                            if (gd.gdNumber != null)
-                            {
-                                var lstgddate = gd.gdNumber?.ToString().Split('-').ToList().Skip(3).Take(3).ToList();
-                                _row["GDDate"] = new DateTime(Convert.ToInt16(lstgddate[2]), Convert.ToInt16(lstgddate[1]), Convert.ToInt16(lstgddate[0]));
-                            }
-                            i++;
-                            if (i != CountGds - 1)
-                            {
-                                dataRows.Add(DeepCopyDataRow(_row));
-                            }
-                            }
-                    }
-
-                    if (payload?.data?.financialInstrumentInfo!=null)
-                    {
-                        cobFi = payload?.data?.financialInstrumentInfo;
-                    }
-                    return new cobReturn
-                    {
-                        cobFi= cobFi,
-                        fiNumbers =fiNumber,
-                        aditionalRows= dataRows
-
-                    };
+                    fiNumber.Add(payload?.data?.financialInfo?.finInsUniqueNumber);
+                    _row["FinInsUniqueNumber"] = payload?.data?.financialInfo?.finInsUniqueNumber;
+                    _row["ModeOfPayment"] = payload?.data?.financialInfo?.modeOfPayment;
+                    _row["gdNumber"] = payload?.data?.gdNumber?.ToString();
+                    _row["gdStatus"] = payload?.data?.gdStatus?.ToString();
+                    _row["ImporterNtn"] = payload?.data?.consignorConsigneeInfo?.ntnFtn.ToString();
+                    _row["ImporterName"] = payload?.data?.consignorConsigneeInfo?.consigneeName.ToString();
+                    _row["ImporterIban"] = payload?.data?.financialInfo?.importerIban;
                 }
-                else
+
+
+
+                if (payload?.data?.gdNumber != null)
                 {
-                    return null;
+                    try
+                    {
+                        var lstgddate = payload?.data?.gdNumber?.ToString().Split('-').ToList().Skip(3).Take(3).ToList();
+                        _row["GDDate"] = new DateTime(Convert.ToInt16(lstgddate[2]), Convert.ToInt16(lstgddate[1]), Convert.ToInt16(lstgddate[0]));
+
+                    }
+                    catch
+                    {
+                        _row["GDDate"] = null;
+                    }
                 }
+                if (_row["TransmissionDate"].ToString() != null && _row["TransmissionDate"].ToString().Length==9)
+                {
+                    try
+                    {
+                        string format = "dd-MMM-yy";
+                        CultureInfo provider = CultureInfo.InvariantCulture;
+
+                        DateTime result = DateTime.ParseExact(_row["TransmissionDate"].ToString(), format, provider);
+                        _row["TransmissionDate"] = result;
+
+                    }
+                    catch
+                    {
+                        _row["TransmissionDate"] = null;
+                    }
+                }
+
+                return fiNumber;
             }
             catch (Exception ex)
             {
-                
+
                 return null;
             }
 
@@ -240,7 +211,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
             catch (Exception ex)
             {
-                
+
                 return null;
             }
         }

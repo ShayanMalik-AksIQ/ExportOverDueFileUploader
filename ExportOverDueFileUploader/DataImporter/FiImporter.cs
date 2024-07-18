@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -27,6 +28,14 @@ namespace ExportOverDueFileUploader.DataImporter
             "ExporterNTN",
             "Days",
             "FiCertifcationdate"
+        }; public static List<string> FiImportColoums = new List<string>
+        {
+            "FinInsUniqueNumber",
+            "modeOfPayment",
+            "ImporterIban",
+            "FiCertifcationDate",
+            "ImporterNtn",
+            "ImporterName"
         };
 
         //public static List<string> CobFiColoums = new List<string>
@@ -52,6 +61,83 @@ namespace ExportOverDueFileUploader.DataImporter
             "BcaDate"
 
         };
+
+        public static void LoadImportFIInfoColoums(DataRow _row)
+        {
+            try
+            {
+                var x=_row["PAYLOAD"]?.ToString();
+                var InnerObj = JsonConvert.DeserializeObject<FIPayload>(_row["PAYLOAD"]?.ToString()).Data.ToString();
+
+                FiImportPayLoadJson payload = JsonConvert.DeserializeObject<FiImportPayLoadJson>(InnerObj);
+                if (payload != null)
+                {
+                    _row["FinInsUniqueNumber"] = payload.finInsUniqueNumber;
+                    _row["modeOfPayment"] = payload.modeOfPayment;
+                    _row["ImporterNtn"] = payload.importerNtn;
+                    _row["ImporterIban"] = payload.importerNtn;
+                    _row["ImporterName"] = payload.importerName;
+
+                    if (!payload.finInsUniqueNumber.IsNullOrEmpty())
+                    {
+                        try
+                        {
+
+                            string ctdate = payload.finInsUniqueNumber.Split('-').ToList().LastOrDefault();
+                            int a = Convert.ToInt16(ctdate.Substring(0, 2));
+                            int b = Convert.ToInt16(ctdate.Substring(2, 2));
+                            int d = Convert.ToInt16(ctdate.Substring(4, 4));
+
+                            _row["FiCertifcationDate"] = new DateTime(d, b, a);
+                        }
+                        catch
+                        {
+                            _row["FiCertifcationDate"] = null;
+                        }
+
+                    }
+                    else
+                    {
+                        _row["FiCertifcationdate"] = null;
+                    }
+
+                    
+                }
+
+                
+                
+
+            }
+            catch
+            {
+                //Console.WriteLine(_row["ResponceCode"]?.ToString());
+                return;
+            }
+            finally {
+                if (_row["TransmissionDate"].ToString() != null)
+                {
+                    try
+                    {
+                        string dateString = _row["TransmissionDate"].ToString().Substring(0, 10); // Extract the first 10 characters
+                        string format = "dd/MM/yyyy";
+                        CultureInfo provider = CultureInfo.InvariantCulture;
+
+                        DateTime result = DateTime.ParseExact(dateString, format, provider);
+                        _row["TransmissionDate"] = result;
+
+                    }
+                    catch
+                    {
+                        _row["TransmissionDate"] = null;
+                    }
+                }
+                else
+                {
+                    _row["FiCertifcationdate"] = null;
+                }
+            }
+
+        }
         public static void LoadFIInfoColoums(DataRow _row)
         {
             try

@@ -13,6 +13,7 @@ using ExportOverDueFileUploader.DataImporter;
 using Serilog;
 using DocumentFormat.OpenXml.VariantTypes;
 using Microsoft.EntityFrameworkCore;
+using ExportOverDueFileUploader.ValidateIqBizLogic;
 
 namespace ExportOverDueFileUploader.MatuirtyBO
 {
@@ -598,5 +599,119 @@ namespace ExportOverDueFileUploader.MatuirtyBO
             }
         }
 
+
+
+        public static string SyncNewImportGd(long fileId, NewFiGdFilterModel fis_OpenGds)
+        {
+            try
+            {
+                int count = 0;
+                Seriloger.LoggerInstance.Information($" Sync New Gds In Process.... :");
+
+                ExportOverDueContext context = new ExportOverDueContext();
+                List<ComparatorSetting> comparatorSettings = context.ComparatorSettings.ToList();
+                List<GdFiLink> Link = new List<GdFiLink>();
+                List<GoodsDeclarationImport> lstgds = CustomRepo.GetGoodsDeclarationImportForLink(AppSettings.TenantId, fileId).ToList();//gd that newly came in 
+
+                if (lstgds.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Gds To Sync");
+
+                    return "No Gds";
+                }
+                List<FinancialInstrumentImport> lstfis = CustomRepo.GetFinancialInstrumentForImportForLink(AppSettings.TenantId, fis_OpenGds).ToList();
+                if (lstfis.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Fis To Sync");
+
+                    return "No Fis";
+                }
+
+                foreach (var gd in lstgds)
+                {
+                    if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
+                    {
+                        var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).FirstOrDefault();
+                        if (FiData != null)
+                        {
+                            Link.Add(new GdFiLink()
+                            {
+                                Type= "Import",
+                                GdId = gd.Id,
+                                FiId = FiData.Id,
+                                ComparisonResults = Comparission.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 1),
+                            });
+                        }
+                    }
+                }
+
+
+
+                CustomRepo.InsertFI_GD_Link(Link);
+                return "Sucess";
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error($"Error In Sync New Gds :{ex.Message}");
+                return $"Error :{ex.Message}";
+            }
+        }
+
+
+        public static string SyncImportNewFi(long fileId, NewFiGdFilterModel fis_OpenGds)
+        {
+            try
+            {
+
+                ExportOverDueContext context = new ExportOverDueContext();
+                List<ComparatorSetting> comparatorSettings= context.ComparatorSettings.ToList();
+                List<GdFiLink> links = new List<GdFiLink>();
+                List<GoodsDeclarationImport> lstgds = CustomRepo.GetGoodsDeclarationImportForLink(fis_OpenGds, AppSettings.TenantId).DistinctBy(gd => gd.Id).ToList();//gd that newly came in 
+
+                if (lstgds.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Gds To Sync");
+
+                    return "No Gds";
+                }
+                var lstfis = CustomRepo.GetFinancialInstrumentImportForLink(AppSettings.TenantId, fileId).ToList();
+                if (lstfis.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Fis To Sync");
+
+                    return "No Fis";
+                }
+
+                foreach (var gd in lstgds)
+                {
+                    if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
+                    {
+                        var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).FirstOrDefault();
+                        if (FiData != null)
+                        {
+                            links.Add(new GdFiLink()
+                            {
+                                Type = "Import",
+                                GdId = gd.Id,
+                                FiId = FiData.Id,
+                                ComparisonResults = Comparission.CompareGdAndFi(gd.Payload,FiData.Payload, comparatorSettings,1),
+                                
+                                
+                            });
+                        }
+                    }
+                }
+
+
+
+                CustomRepo.InsertFI_GD_Link(links);
+                return "Sucess";
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error($"Error In Sync New Gds :{ex.Message}");
+                return $"Error :{ex.Message}";
+            }
+        }
     }
 }
