@@ -38,6 +38,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 {
                     try
                     {
+
                         var date = dataRow["DueDate"].ToString();
                         int a = Convert.ToInt16(date.Substring(6, 2));
                         int b = Convert.ToInt16(date.Substring(4, 2));
@@ -122,32 +123,32 @@ namespace ExportOverDueFileUploader.DataImporter
                 {
                     dataRow["DateofLodgement"] = null;
                 }
-            }
-            if (dataRow["DueDate"] != null && dataRow["DueDate"].ToString().Length == 8 && IsOnlyDigits(dataRow["DueDate"].ToString()))
-            {
-                try
+
+                if (dataRow["DueDate"] != null && dataRow["DueDate"].ToString().Length == 8 && IsOnlyDigits(dataRow["DueDate"].ToString()))
                 {
-                    var date = dataRow["DueDate"].ToString();
-                    int a = Convert.ToInt16(date.Substring(6, 2));
-                    int b = Convert.ToInt16(date.Substring(4, 2));
-                    int d = Convert.ToInt16(date.Substring(0, 4));
+                    try
+                    {
+                        var date = dataRow["DueDate"].ToString();
+                        int a = Convert.ToInt16(date.Substring(6, 2));
+                        int b = Convert.ToInt16(date.Substring(4, 2));
+                        int d = Convert.ToInt16(date.Substring(0, 4));
 
 
-                    dataRow["DueDate"] = new DateTime(d, b, a);
+                        dataRow["DueDate"] = new DateTime(d, b, a);
+                    }
+                    catch
+                    {
+
+                        dataRow["DueDate"] = null;
+
+                    }
+
                 }
-                catch
+                else
                 {
-
                     dataRow["DueDate"] = null;
-
                 }
-
             }
-            else
-            {
-                dataRow["DueDate"] = null;
-            }
-
 
         }
 

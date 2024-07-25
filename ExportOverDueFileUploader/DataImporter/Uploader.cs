@@ -42,6 +42,7 @@ namespace ExportOverDueFileUploader.DataImporter
             TableNames.Add("ITRS_Data");
             TableNames.Add("NtnConversion");
             TableNames.Add("RealizationReport");
+            TableNames.Add("CobGds");
 
         }
         public void Executeion()
@@ -301,7 +302,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     //    data = data.Select("CollectionNumber <> '' OR TransactionRef <> ''").CopyToDataTable();
                     //}
 
-                    if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport")
+                    if (EntityName != "ITRS_Data" && EntityName != "CobGds" && EntityName != "NtnConversion" && EntityName != "RealizationReport")
                     {
 
                         data.Columns.Add("CreationTime");
@@ -380,7 +381,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             _row["TRANSMISSION_DATETIME"] = GdImporter.ConvertTransmissionDate(_row["TRANSMISSION_DATETIME"].ToString());
                         }
-                        if (EntityName != "ITRS_Data" && EntityName != "NtnConversion" && EntityName != "RealizationReport")
+                        if (EntityName != "ITRS_Data" && EntityName != "CobGds" && EntityName != "NtnConversion" && EntityName != "RealizationReport")
                         {
 
                             _row["CreationTime"] = DateTimeNow;
