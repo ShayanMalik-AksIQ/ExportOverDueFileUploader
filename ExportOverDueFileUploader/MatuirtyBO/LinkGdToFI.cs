@@ -24,10 +24,10 @@ namespace ExportOverDueFileUploader.MatuirtyBO
             try
             {
                 string Query = "";
-                var context = new ExportOverDueContext();
-                Query = $"EXEC UpdateMatruityDateFromCollection";
-                var result = context.Database.ExecuteSqlRaw(Query);
-                Seriloger.LoggerInstance.Information($"{Entity} of Sync Sucess ");
+                //var context = new ExportOverDueContext();
+                //Query = $"EXEC UpdateMatruityDateFromCollection";
+                //var result = context.Database.ExecuteSqlRaw(Query);
+                //Seriloger.LoggerInstance.Information($"{Entity} of Sync Sucess ");
 
             }
             catch (Exception ex)
@@ -211,6 +211,11 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 foreach (var gd in lstgds)
                 {
+                    if(gd.gdNumber== "KPAE-SB-7962-27-07-2023")
+                    {
+
+                    }
+
                     List<GD_FI_Link> GdV20Dates = new List<GD_FI_Link>();
                     if (gd.gdNumber == null)
                     {

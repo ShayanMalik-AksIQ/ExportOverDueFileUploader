@@ -64,5 +64,95 @@ namespace ExportOverDueFileUploader.DataImporter
 
             }
         }
+
+        public static void LoadV20InfoColoums(DataRow dataRow)
+        {
+            {
+
+                try
+                {
+                    var date = dataRow["RPTDate"].ToString().Split("/");
+                    if (date.Length == 3)
+                    {
+                        int d = Convert.ToInt16(date[1]);
+                        int m = Convert.ToInt16(date[0]);
+                        int y = Convert.ToInt16(date[2]);
+
+
+                        dataRow["RPTDate"] = new DateTime(y, m, d);
+
+                    }
+                    else
+                    {
+                        dataRow["RPTDate"] = null;
+                    }
+
+                }
+                catch
+                {
+
+                    dataRow["RPTDate"] = null;
+
+                }
+
+
+
+
+                try
+                {
+                    var date = dataRow["DueDate"].ToString().Split("/");
+                    if (date.Length == 3)
+                    {
+                        int d = Convert.ToInt16(date[1]);
+                        int m = Convert.ToInt16(date[0]);
+                        int y = Convert.ToInt16(date[2]);
+
+
+                        dataRow["DueDate"] = new DateTime(y, m, d);
+
+                    }
+                    else
+                    {
+                        dataRow["DueDate"] = null;
+                    }
+
+                }
+                catch
+                {
+
+                    dataRow["RPTDate"] = null;
+
+                }
+
+
+
+                try
+                {
+                    var date = dataRow["ShipmentDate"].ToString().Split("/");
+                    if (date.Length == 3)
+                    {
+                        int d = Convert.ToInt16(date[1]);
+                        int m = Convert.ToInt16(date[0]);
+                        int y = Convert.ToInt16(date[2]);
+
+
+                        dataRow["ShipmentDate"] = new DateTime(y, m, d);
+
+                    }
+                    else
+                    {
+                        dataRow["ShipmentDate"] = null;
+                    }
+
+                }
+                catch
+                {
+
+                    dataRow["ShipmentDate"] = null;
+
+                }
+            }
+
+        }
     }
 }

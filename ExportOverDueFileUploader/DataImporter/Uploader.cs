@@ -43,6 +43,7 @@ namespace ExportOverDueFileUploader.DataImporter
             TableNames.Add("NtnConversion");
             TableNames.Add("RealizationReport");
             TableNames.Add("CobGds");
+            TableNames.Add("v20SavedData");
 
         }
         public void Executeion()
@@ -60,7 +61,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     return;
                 }
 
-             FileReader.DownloadFromFtp(lstFileTypes);
+             //FileReader.DownloadFromFtp(lstFileTypes);
 
                 foreach (var fileType in lstFileTypes)
                 {
@@ -315,28 +316,15 @@ namespace ExportOverDueFileUploader.DataImporter
                         ModifyDataTable(data, coloumRename?.Split("||").ToList());
 
                     }
-                    if (EntityName == "DocumentaryCollection")
+                    if (EntityName == "LetterOfCredit" || EntityName == "DocumentaryCollection")
                     {
-                        // msgIds = ExtractOkMessageId(data);
                         data = data.Select("GdNumber <> ''").CopyToDataTable();
-                        //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
-                        data = data.Select("FiNumber <> ''").CopyToDataTable();
                         if (data.Rows.Count == 0)
                         {
                             return null;
                         }
                     }
-                    if (EntityName == "DocumentaryCollection")
-                    {
-                        // msgIds = ExtractOkMessageId(data);
-                        data = data.Select("GdNumber <> ''").CopyToDataTable();
-                        //data = data.Select("MESSAGE_TYPE = '307' OR MESSAGE_TYPE = '102'").CopyToDataTable();
-                        data = data.Select("FiNumber <> ''").CopyToDataTable();
-                        if (data.Rows.Count == 0)
-                        {
-                            return null;
-                        }
-                    }
+                    
 
                     data.Columns.Add("TenantId");
                     data.Columns.Add("FileAuditId");
@@ -446,6 +434,11 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             LodgmentImporter.LoadLodgmentColoums(_row, EntityName);
                         }
+                        else if (EntityName == "v20SavedData")
+                        {
+                            ITRS_Importer.LoadV20InfoColoums(_row);
+                        }
+
                     }
                     if (data.Columns.Contains("ID"))
                     {

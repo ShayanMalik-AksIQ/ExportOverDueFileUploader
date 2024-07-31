@@ -24,8 +24,13 @@ namespace ExportOverDueFileUploader.DataImporter
 
         public static void LoadLodgmentColoums(DataRow dataRow, string EntityName)
         {
+            if (dataRow["gdNumber"].ToString().Contains("۞"))
+            {
+                dataRow["gdNumber"] = dataRow["gdNumber"].ToString().Replace("۞", ",");
+            }
             if (EntityName == "DocumentaryCollection")
             {
+                
                 if (dataRow["LiabilityAmount"] == "" || dataRow["LiabilityAmount"] == null)
                 {
                     dataRow["LiabilityAmount"] = "0";
@@ -148,11 +153,196 @@ namespace ExportOverDueFileUploader.DataImporter
                 {
                     dataRow["DueDate"] = null;
                 }
+
+
+                if (dataRow["ShipmentDate"] != null && dataRow["ShipmentDate"].ToString().Length == 8 && IsOnlyDigits(dataRow["ShipmentDate"].ToString()))
+                {
+                    try
+                    {
+                        var date = dataRow["ShipmentDate"].ToString();
+                        int a = Convert.ToInt16(date.Substring(6, 2));
+                        int b = Convert.ToInt16(date.Substring(4, 2));
+                        int d = Convert.ToInt16(date.Substring(0, 4));
+
+
+                        dataRow["ShipmentDate"] = new DateTime(d, b, a);
+                    }
+                    catch
+                    {
+
+                        dataRow["ShipmentDate"] = null;
+
+                    }
+
+                }
+                else
+                {
+                    dataRow["ShipmentDate"] = null;
+                }
             }
 
         }
 
+        public static void LoadOldV20Coloums(DataRow dataRow, string EntityName)
+        {
+            if (dataRow["gdNumber"].ToString().Contains("۞"))
+            {
+                dataRow["gdNumber"] = dataRow["gdNumber"].ToString().Replace("۞", ",");
+            }
+            if (EntityName == "DocumentaryCollection")
+            {
 
-       
+                if (dataRow["LiabilityAmount"] == "" || dataRow["LiabilityAmount"] == null)
+                {
+                    dataRow["LiabilityAmount"] = "0";
+                }
+                if (dataRow["CollectionAmount"] == null || dataRow["CollectionAmount"] == "")
+                {
+                    dataRow["CollectionAmount"] = "0";
+                }
+                if (dataRow["DueDate"] != null && dataRow["DueDate"].ToString().Length == 8 && IsOnlyDigits(dataRow["DueDate"].ToString()))
+                {
+                    try
+                    {
+
+                        var date = dataRow["DueDate"].ToString();
+                        int a = Convert.ToInt16(date.Substring(6, 2));
+                        int b = Convert.ToInt16(date.Substring(4, 2));
+                        int d = Convert.ToInt16(date.Substring(0, 4));
+
+
+                        dataRow["DueDate"] = new DateTime(d, b, a);
+                    }
+                    catch
+                    {
+
+                        dataRow["DueDate"] = null;
+
+                    }
+
+                }
+                else
+                {
+                    dataRow["DueDate"] = null;
+                }
+                if (dataRow["DateofLodgement"] != null && dataRow["DateofLodgement"].ToString().Length == 8 && IsOnlyDigits(dataRow["DateofLodgement"].ToString()))
+                {
+                    try
+                    {
+                        var date = dataRow["DateofLodgement"].ToString();
+                        int a = Convert.ToInt16(date.Substring(6, 2));
+                        int b = Convert.ToInt16(date.Substring(4, 2));
+                        int d = Convert.ToInt16(date.Substring(0, 4));
+
+
+                        dataRow["DateofLodgement"] = new DateTime(d, b, a);
+                    }
+                    catch
+                    {
+                        dataRow["DateofLodgement"] = null;
+
+
+                    }
+
+
+                }
+                else
+                {
+                    dataRow["DateofLodgement"] = null;
+                }
+
+
+            }
+            else
+                if (EntityName == "LetterOfCredit")
+            {
+
+
+                if (!IsAmount(dataRow["LcAmount"].ToString()) || (
+                    dataRow["LcAmount"] == "" || dataRow["LcAmount"] == null)
+                    )
+                {
+                    dataRow["LcAmount"] = "0";
+                }
+                if (dataRow["DateofLodgement"] != null && IsOnlyDigits(dataRow["DateofLodgement"].ToString()) && dataRow["DateofLodgement"].ToString().Length == 8)
+                {
+                    try
+                    {
+                        var date = dataRow["DateofLodgement"].ToString();
+                        int a = Convert.ToInt16(date.Substring(6, 2));
+                        int b = Convert.ToInt16(date.Substring(4, 2));
+                        int d = Convert.ToInt16(date.Substring(0, 4));
+
+
+                        dataRow["DateofLodgement"] = new DateTime(d, b, a);
+                    }
+                    catch
+                    {
+                        dataRow["DateofLodgement"] = null;
+
+
+                    }
+
+
+                }
+                else
+                {
+                    dataRow["DateofLodgement"] = null;
+                }
+
+                if (dataRow["DueDate"] != null && dataRow["DueDate"].ToString().Length == 8 && IsOnlyDigits(dataRow["DueDate"].ToString()))
+                {
+                    try
+                    {
+                        var date = dataRow["DueDate"].ToString();
+                        int a = Convert.ToInt16(date.Substring(6, 2));
+                        int b = Convert.ToInt16(date.Substring(4, 2));
+                        int d = Convert.ToInt16(date.Substring(0, 4));
+
+
+                        dataRow["DueDate"] = new DateTime(d, b, a);
+                    }
+                    catch
+                    {
+
+                        dataRow["DueDate"] = null;
+
+                    }
+
+                }
+                else
+                {
+                    dataRow["DueDate"] = null;
+                }
+
+
+                if (dataRow["ShipmentDate"] != null && dataRow["ShipmentDate"].ToString().Length == 8 && IsOnlyDigits(dataRow["ShipmentDate"].ToString()))
+                {
+                    try
+                    {
+                        var date = dataRow["ShipmentDate"].ToString();
+                        int a = Convert.ToInt16(date.Substring(6, 2));
+                        int b = Convert.ToInt16(date.Substring(4, 2));
+                        int d = Convert.ToInt16(date.Substring(0, 4));
+
+
+                        dataRow["ShipmentDate"] = new DateTime(d, b, a);
+                    }
+                    catch
+                    {
+
+                        dataRow["ShipmentDate"] = null;
+
+                    }
+
+                }
+                else
+                {
+                    dataRow["ShipmentDate"] = null;
+                }
+            }
+
+        }
+
     }
 }
