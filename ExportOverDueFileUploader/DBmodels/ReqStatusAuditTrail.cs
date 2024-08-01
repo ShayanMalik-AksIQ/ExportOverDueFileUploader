@@ -24,4 +24,10 @@ public partial class ReqStatusAuditTrail
     public DateTime? LastModificationTime { get; set; }
 
     public long? LastModifierUserId { get; set; }
+
+    public long NewStatusId { get; set; }
+
+    public long OldStatusId { get; set; }
+
+    public string? Remarks { get; set; }
 }

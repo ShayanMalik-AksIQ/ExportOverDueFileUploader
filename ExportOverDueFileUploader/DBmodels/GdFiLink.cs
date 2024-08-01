@@ -29,9 +29,13 @@ public partial class GdFiLink
 
     public DateTime? DeletionTime { get; set; }
 
-    public virtual List<ComparisonResult> ComparisonResults { get; set; }
+    public long? RequestStatusId { get; set; }
+
+    public virtual ICollection<ComparisonResult> ComparisonResults { get; set; } = new List<ComparisonResult>();
 
     public virtual FinancialInstrumentImport? Fi { get; set; }
 
     public virtual GoodsDeclarationImport? Gd { get; set; }
+
+    public virtual RequestStatus? RequestStatus { get; set; }
 }

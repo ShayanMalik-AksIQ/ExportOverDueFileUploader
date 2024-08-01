@@ -639,7 +639,11 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 Type= "Import",
                                 GdId = gd.Id,
                                 FiId = FiData.Id,
-                                ComparisonResults = Comparission.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 1),
+                                ComparisonResults = Comparison.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 11),
+                                CreationTime=DateTime.Now,
+                                IsDeleted=false,
+                               RequestStatusId=12,
+                               TenantId=AppSettings.TenantId
                             });
                         }
                     }
@@ -694,9 +698,11 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 Type = "Import",
                                 GdId = gd.Id,
                                 FiId = FiData.Id,
-                                ComparisonResults = Comparission.CompareGdAndFi(gd.Payload,FiData.Payload, comparatorSettings,1),
-                                
-                                
+                                ComparisonResults = Comparison.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 11),
+                                CreationTime = DateTime.Now,
+                                IsDeleted = false,
+                                RequestStatusId = 12,
+                                TenantId = AppSettings.TenantId
                             });
                         }
                     }

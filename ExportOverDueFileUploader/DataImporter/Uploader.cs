@@ -318,7 +318,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         } 
                     }
 
-                        BulkInsert(data, EntityName);
+                      BulkInsert(data, EntityName);
 
                         if (EntityName == "GoodsDeclarationImport")
                         {

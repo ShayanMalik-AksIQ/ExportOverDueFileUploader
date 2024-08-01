@@ -38,7 +38,6 @@ public partial class ExportOverDueContext : DbContext
     public virtual DbSet<RequestStatus> RequestStatuses { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer(AppSettings.ConnectionString);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -90,9 +89,13 @@ public partial class ExportOverDueContext : DbContext
 
             entity.HasIndex(e => e.GdId, "IX_GdFiLink_GdId");
 
+            entity.HasIndex(e => e.RequestStatusId, "IX_GdFiLink_RequestStatusId");
+
             entity.HasOne(d => d.Fi).WithMany(p => p.GdFiLinks).HasForeignKey(d => d.FiId);
 
             entity.HasOne(d => d.Gd).WithMany(p => p.GdFiLinks).HasForeignKey(d => d.GdId);
+
+            entity.HasOne(d => d.RequestStatus).WithMany(p => p.GdFiLinks).HasForeignKey(d => d.RequestStatusId);
         });
 
         modelBuilder.Entity<GoodsDeclarationImport>(entity =>
