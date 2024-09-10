@@ -1,26 +1,11 @@
-﻿using Azure.Core;
-using DocumentFormat.OpenXml.InkML;
-using DocumentFormat.OpenXml.Office2010.Excel;
-using ExportOverDueFileUploader.DBHelper;
-using ExportOverDueFileUploader.DBmodels;
+﻿using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.MatuirtyBO;
-using ExportOverDueFileUploader.Modles.JsonHelper;
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Security.Authentication;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using static ExportOverDueFileUploader.DataImporter.GdImporter;
 
 namespace ExportOverDueFileUploader.DataImporter
 {
@@ -34,9 +19,10 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             TableNames.Add("FinancialInstrumentImport");
             TableNames.Add("GoodsDeclarationImport");
+            TableNames.Add("BranchWiseSegments");
 
         }
-        public void Executeion()
+        public void Execution()
         {
             try
             {
@@ -70,7 +56,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         try
                         {
                             string FileJsonData = string.Empty;
-                            Seriloger.LoggerInstance.Information($"FileTyoe:{fileType.Name} File:{file} Reading In Progress....");
+                            Seriloger.LoggerInstance.Information($"FileType:{fileType.Name} File:{file} Reading In Progress....");
                             if (file.EndsWith(".xlsx") || file.EndsWith(".xls"))
                             {
                                 FileJsonData = FileReader.ReadAndValidateExcelFile(Path.Combine(BasePath, file), fileType.HeaderRow == 0 ? 1 : fileType.HeaderRow, fileType.ColumnNames);
@@ -81,7 +67,7 @@ namespace ExportOverDueFileUploader.DataImporter
                             }
                             else
                             {
-                                Seriloger.LoggerInstance.Error("File Type Incorect");
+                                Seriloger.LoggerInstance.Error("File Type Incorrect");
                                 continue;
                             }
                             try
@@ -91,14 +77,14 @@ namespace ExportOverDueFileUploader.DataImporter
                                 auditTrail.FileTypeId = fileType.Id;//
                                 if (FileJsonData != null && !FileJsonData.StartsWith("Error"))
                                 {
-                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Reading Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Reading Success {Files.IndexOf(file) + 1}/{Files.Count}");
                                     DateTimeNow = DateTime.Now;
                                     auditTrail.TenantId = AppSettings.TenantId;
                                     auditTrail.CreationTime = DateTimeNow;
                                     context.FileImportAuditTrails.Add(auditTrail);
                                     context.SaveChanges();
                                     var filters = ImportData(FileJsonData, fileType.Description, auditTrail.Id, file, fileType.ColumnRename);
-                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Db Export Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Db Export Success {Files.IndexOf(file) + 1}/{Files.Count}");
                                     auditTrail.Remarks = "Success";
                                     auditTrail.Success = true;
                                     if (fileType.Description == "GoodsDeclarationImport")
@@ -109,13 +95,13 @@ namespace ExportOverDueFileUploader.DataImporter
                                     {
                                         LinkGdToFI.SyncImportNewFi(auditTrail.Id, filters);
                                     }
-                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Sync Sucess {Files.IndexOf(file) + 1}/{Files.Count}");
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Sync Success {Files.IndexOf(file) + 1}/{Files.Count}");
                                 }
                                 else
                                 {
                                     auditTrail.Success = false;
                                     auditTrail.Remarks = $"{FileJsonData}";
-                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Hadders MissMached {Files.IndexOf(file) + 1}/{Files.Count}");
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} Handers Miss Matched {Files.IndexOf(file) + 1}/{Files.Count}");
                                 }
 
 
@@ -133,8 +119,8 @@ namespace ExportOverDueFileUploader.DataImporter
                                     ExportOverDueContext context1 = new ExportOverDueContext();
                                     context1.FileImportAuditTrails.Update(auditTrail);
                                     context1.SaveChanges();
-                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} {Files.IndexOf(file) + 1}/{Files.Count}  Uploaded Sucess With Audit");
-                                    Seriloger.LoggerInstance.Information($"-------------------------{file} Sucess---------------------------");
+                                    Seriloger.LoggerInstance.Information($"{fileType.Name} file:{file} {Files.IndexOf(file) + 1}/{Files.Count}  Uploaded Success With Audit");
+                                    Seriloger.LoggerInstance.Information($"-------------------------{file} Success---------------------------");
                                 }
                                 catch (Exception ex)
                                 {
@@ -148,7 +134,6 @@ namespace ExportOverDueFileUploader.DataImporter
                             Seriloger.LoggerInstance.Error(ex.Message);
                         }
                     }
-                    //CustomRepo.RemoveDublicate(fileType.Description);
                     FileReader.MoveFiles(fileType.FilePath, "*.xlsx", "*.csv");
 
 
@@ -161,7 +146,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
 
         }
-        public void Executeion(DataTable dataTable, string EntityName, string fileName)
+        public void Execution(DataTable dataTable, string EntityName, string fileName)
         {
             FileImportAuditTrail auditTrail = new FileImportAuditTrail();
             ExportOverDueContext context = new ExportOverDueContext();
@@ -183,7 +168,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         LinkGdToFI.SyncNewFi(auditTrail.Id, filters);
                     }
-                    Seriloger.LoggerInstance.Information($"{EntityName} file:{fileName} Db Export Sucess");
+                    Seriloger.LoggerInstance.Information($"{EntityName} file:{fileName} Db Export Success");
                     auditTrail.Remarks = "Success";
                     auditTrail.Success = true;
 
@@ -210,7 +195,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     ExportOverDueContext context1 = new ExportOverDueContext();
                     context1.FileImportAuditTrails.Update(auditTrail);
                     context1.SaveChanges();
-                    Seriloger.LoggerInstance.Information($"{EntityName} file:{fileName} Uploaded Sucess With Audit");
+                    Seriloger.LoggerInstance.Information($"{EntityName} file:{fileName} Uploaded Success With Audit");
                 }
                 catch (Exception ex)
                 {
@@ -220,7 +205,7 @@ namespace ExportOverDueFileUploader.DataImporter
             }
 
         }
-        public NewFiGdFilterModel ImportData(string jsondata, string EntityName, long FileID, string fileName, string coloumRename, DataTable dataTable = null)
+        public NewFiGdFilterModel ImportData(string jsonData, string EntityName, long FileID, string fileName, string columnRename, DataTable dataTable = null)
         {
             NewFiGdFilterModel filter = new NewFiGdFilterModel();
             if (TableNames.Contains(EntityName))
@@ -237,7 +222,7 @@ namespace ExportOverDueFileUploader.DataImporter
                             DateParseHandling = DateParseHandling.None
                         };
 
-                        data = JsonConvert.DeserializeObject<DataTable>(jsondata, settings);
+                        data = JsonConvert.DeserializeObject<DataTable>(jsonData, settings);
                     }
                     else
                     {
@@ -276,14 +261,14 @@ namespace ExportOverDueFileUploader.DataImporter
                     data.Columns.Add("IsDeleted");
                     data.Columns.Add("CreatorUserId");
 
-                    if (!coloumRename.IsNullOrEmpty())
+                    if (!columnRename.IsNullOrEmpty())
                     {
-                        ModifyDataTable(data, coloumRename?.Split("||").ToList());
+                        ModifyDataTable(data, columnRename?.Split("||").ToList());
 
                     }
 
                     data.Columns.Add("TenantId");
-                    data.Columns.Add("FileAuditId");
+                    // data.Columns.Add("FileAuditId");
 
                     if (EntityName == "GoodsDeclarationImport")
                     {
@@ -305,7 +290,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         _row["IsDeleted"] = false;
                         _row["CreatorUserId"] = null;
                         _row["TenantId"] = tenantId;
-                        _row["FileAuditId"] = FileID;
+                        //_row["FileAuditId"] = FileID;
 
                         if (EntityName == "GoodsDeclarationImport")
                         {
@@ -315,36 +300,45 @@ namespace ExportOverDueFileUploader.DataImporter
                         else if (EntityName == "FinancialInstrumentImport")
                         {
                             FiImporter.LoadImportFIInfoColoums(_row);
-                        } 
+                        }
+                    }
+                    if (EntityName == "GoodsDeclarationImport")
+                    {
+                        data = data.Select("gdNumber <> ''").CopyToDataTable();
+
+                    }
+                    else if (EntityName == "FinancialInstrumentImport")
+                    {
+                        data = data.Select("FinInsUniqueNumber <> ''").CopyToDataTable();
                     }
 
-                      BulkInsert(data, EntityName);
+                    BulkInsert(data, EntityName);
 
-                        if (EntityName == "GoodsDeclarationImport")
-                        {
-                            filter = ExtractFiNumberFromNewGDs(data);
-                        }
-                        if (EntityName == "FinancialInstrumentImport")
-                        {
-                            filter = ExtractFilisterList(data);
-                        }
+                    if (EntityName == "GoodsDeclarationImport")
+                    {
+                        filter = ExtractFiNumberFromNewGDs(data);
+                    }
+                    if (EntityName == "FinancialInstrumentImport")
+                    {
+                        filter = ExtractFilisterList(data);
+                    }
 
-                    
-                        return filter;
+
+                    return filter;
                 }
                 catch (Exception ex)
                 {
                     Seriloger.LoggerInstance.Error($"Error In Import Data:{ex.Message}");
                     return null;
-                } 
+                }
             }
             else
             {
                 Seriloger.LoggerInstance.Error($"Incorrect Table Name ");
                 return null;
             }
-        } 
-        public void BulkInsert(DataTable dt, string entityname)
+        }
+        public void BulkInsert(DataTable dt, string entityName)
         {
             try
             {// get fro df
@@ -355,7 +349,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 using (var sqlbulk = new SqlBulkCopy(connectionString))
                 {
-                    sqlbulk.DestinationTableName = entityname;
+                    sqlbulk.DestinationTableName = entityName;
                     for (int i = 0; i < totalRows; i += batchSize)
                     {
                         var currentBatch = dt.AsEnumerable().Skip(i).Take(batchSize).CopyToDataTable();
@@ -385,12 +379,6 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             try
             {
-                string host = "sftprpa.jsbl.com";
-                string username = "your_username";
-                string password = "your_password";
-                string directory = "/ExportOverdue";
-
-
                 // Check if the folder exists
                 if (Directory.Exists(folderPath))
                 {
@@ -452,9 +440,9 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 foreach (DataRow row in dataTable.Rows)
                 {
-                   
+
                     string fi = row["FinInsUniqueNumber"].ToString();
-                   
+
                     if (fi != "")
                     {
                         fis.Add(fi);
@@ -487,8 +475,6 @@ namespace ExportOverDueFileUploader.DataImporter
             }
             return msgIds;
         }
-
-
         static void ModifyDataTable(DataTable table, List<string> renameInput)
         {
 

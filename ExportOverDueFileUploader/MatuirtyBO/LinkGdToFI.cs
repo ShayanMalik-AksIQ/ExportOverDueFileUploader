@@ -1,19 +1,11 @@
-﻿using ExportOverDueFileUploader.DBmodels;
+﻿using ExportOverDueFileUploader.DataImporter;
+using ExportOverDueFileUploader.DBHelper;
+using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.Modles.JsonHelper;
-using ExportOverDueFileUploader.Modles;
+using ExportOverDueFileUploader.ValidateIqBizLogic;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ExportOverDueFileUploader.DBHelper;
-using ExportOverDueFileUploader.DataImporter;
-using Serilog;
-using DocumentFormat.OpenXml.VariantTypes;
-using Microsoft.EntityFrameworkCore;
-using ExportOverDueFileUploader.ValidateIqBizLogic;
 
 namespace ExportOverDueFileUploader.MatuirtyBO
 {
@@ -28,7 +20,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                 var context = new ExportOverDueContext();
                 Query = $"EXEC UpdateMatruityDateFromCollection";
                 var result = context.Database.ExecuteSqlRaw(Query);
-                Seriloger.LoggerInstance.Information($"{Entity} of Sync Sucess ");
+                Seriloger.LoggerInstance.Information($"{Entity} of Sync Success ");
 
             }
             catch (Exception ex)
@@ -386,7 +378,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     V20Dates.AddRange(GdV20Dates);
                 }
                 CustomRepo.InsertFI_GD_Link(V20Dates);
-                return "Sucess";
+                return "Success";
             }
             catch (Exception ex)
             {
@@ -590,7 +582,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                 }
                 CustomRepo.InsertFI_GD_Link(V20Dates);
                 // CustomRepo.RemoveLinkFI_GD_Link(OpengdIds);
-                return "Sucess";
+                return "Success";
             }
             catch (Exception ex)
             {
@@ -605,7 +597,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         {
             try
             {
-                int count = 0;
                 Seriloger.LoggerInstance.Information($" Sync New Gds In Process.... :");
 
                 ExportOverDueContext context = new ExportOverDueContext();
@@ -636,14 +627,14 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                         {
                             Link.Add(new GdFiLink()
                             {
-                                Type= "Import",
+                                Type = "Import",
                                 GdId = gd.Id,
                                 FiId = FiData.Id,
-                                ComparisonResults = Comparison.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 11),
-                                CreationTime=DateTime.Now,
-                                IsDeleted=false,
-                               RequestStatusId=12,
-                               TenantId=AppSettings.TenantId
+                                ComparisonResults = Compression.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 11),
+                                CreationTime = DateTime.Now,
+                                IsDeleted = false,
+                                RequestStatusId = 12,
+                                TenantId = AppSettings.TenantId
                             });
                         }
                     }
@@ -652,7 +643,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
 
                 CustomRepo.InsertFI_GD_Link(Link);
-                return "Sucess";
+                return "Success";
             }
             catch (Exception ex)
             {
@@ -668,7 +659,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
             {
 
                 ExportOverDueContext context = new ExportOverDueContext();
-                List<ComparatorSetting> comparatorSettings= context.ComparatorSettings.ToList();
+                List<ComparatorSetting> comparatorSettings = context.ComparatorSettings.ToList();
                 List<GdFiLink> links = new List<GdFiLink>();
                 List<GoodsDeclarationImport> lstgds = CustomRepo.GetGoodsDeclarationImportForLink(fis_OpenGds, AppSettings.TenantId).DistinctBy(gd => gd.Id).ToList();//gd that newly came in 
 
@@ -698,7 +689,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 Type = "Import",
                                 GdId = gd.Id,
                                 FiId = FiData.Id,
-                                ComparisonResults = Comparison.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 11),
+                                ComparisonResults = Compression.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 11),
                                 CreationTime = DateTime.Now,
                                 IsDeleted = false,
                                 RequestStatusId = 12,
@@ -711,7 +702,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
 
                 CustomRepo.InsertFI_GD_Link(links);
-                return "Sucess";
+                return "Success";
             }
             catch (Exception ex)
             {

@@ -1,22 +1,8 @@
-﻿using DocumentFormat.OpenXml.InkML;
-using DocumentFormat.OpenXml.Office2010.Excel;
-using ExportOverDueFileUploader;
+﻿using ExportOverDueFileUploader;
 using ExportOverDueFileUploader.DataImporter;
-using ExportOverDueFileUploader.DBHelper;
 using ExportOverDueFileUploader.DBmodels;
-using ExportOverDueFileUploader.MatuirtyBO;
-using ExportOverDueFileUploader.Modles.JsonHelper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
-using Serilog;
-using System;
-using System.Data;
-using System.Globalization;
-using System.Runtime.CompilerServices;
 
 internal class Program
 {
@@ -34,12 +20,14 @@ internal class Program
                 .AddJsonFile("appsettings.json")
                 .Build();
             //AppSettings.ConnectionString = configuration.GetConnectionString("DefaultConnection");
-            AppSettings.ConnectionString = "Server=DESKTOP-O10K6M5; Database=ExportOverDueJs_Uat; Trusted_Connection=True; TrustServerCertificate=True;Command Timeout=16000;";
+            AppSettings.ConnectionString = "Server=DESKTOP-O10K6M5\\SQL15; Database=ValidateIQ_Dev; Trusted_Connection=True; TrustServerCertificate=True;";
             AppSettings.TenantId = int.Parse(configuration.GetConnectionString("TenantId"));
             AppSettings.BatchSize = int.Parse(configuration.GetConnectionString("BatchSize"));
 
+            ExportOverDueContext context = new ExportOverDueContext();
+            var settings = context.ComparatorSettings.ToList();
             Uploader x = new Uploader();
-            x.Executeion();
+            x.Execution();
 
         }
         catch (Exception ex)

@@ -4,15 +4,8 @@ using CsvHelper.Configuration;
 using ExportOverDueFileUploader.DBmodels;
 using FluentFTP;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Formats.Asn1;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace ExportOverDueFileUploader.DataImporter
 {
@@ -24,16 +17,16 @@ namespace ExportOverDueFileUploader.DataImporter
             ExportOverDueContext context = new ExportOverDueContext();
             var settings = context.DefaultSettings;
 
-            string host = settings.FirstOrDefault(x=>x.Key=="FtpHost")?.Value;
-            string username= settings.FirstOrDefault(x => x.Key == "FtpUserName")?.Value;
-            string password= settings.FirstOrDefault(x => x.Key == "FtpPassword")?.Value;
-            string directoryBasePath= settings.FirstOrDefault(x => x.Key == "FtpBasePath")?.Value;
+            string host = settings.FirstOrDefault(x => x.Key == "FtpHost")?.Value;
+            string username = settings.FirstOrDefault(x => x.Key == "FtpUserName")?.Value;
+            string password = settings.FirstOrDefault(x => x.Key == "FtpPassword")?.Value;
+            string directoryBasePath = settings.FirstOrDefault(x => x.Key == "FtpBasePath")?.Value;
 
 
             DateTime currentDate = DateTime.Now;
             string formattedDate = currentDate.ToString("ddMMyyyy");
             string directoryBase = $"{directoryBasePath}/{formattedDate}";
-            
+
             using (FtpClient ftp = new FtpClient(host, username, password))
             {
                 try
@@ -44,7 +37,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     foreach (var type in FileTypes)
                     {
                         string directory = $"{directoryBase}/{type.Name}";
-                        if(ftp.DirectoryExists(directory))
+                        if (ftp.DirectoryExists(directory))
                         {
                             ftp.SetWorkingDirectory(directory);
                             foreach (FtpListItem item in ftp.GetListing(directory))
@@ -52,7 +45,7 @@ namespace ExportOverDueFileUploader.DataImporter
                                 if (item.Name.EndsWith("csv") || item.Name.EndsWith("xlsx") || item.Name.EndsWith("xls"))
                                 { ///                          server path                 ftp remote path
                                     ftp.DownloadFile($"{type.FilePath}\\{item.Name}", $"{directory}/{item.Name}");
-                                    Seriloger.LoggerInstance.Information($"File={directory}/{item.Name} Download Sucess for {type.Name} ");
+                                    Seriloger.LoggerInstance.Information($"File={directory}/{item.Name} Download Success for {type.Name} ");
                                 }
                             }
                         }
@@ -60,7 +53,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         {
                             Seriloger.LoggerInstance.Error($"Ftp directory={directory} Not Found");
                         }
-                       
+
                     }
 
                 }
@@ -92,9 +85,9 @@ namespace ExportOverDueFileUploader.DataImporter
                     csv.ReadHeader();
 
                     // Get the headers as an array of strings
-                   // var headers = csv.HeaderRecord.Where(header => header != null && header != "").ToList();
+                    // var headers = csv.HeaderRecord.Where(header => header != null && header != "").ToList();
                     var headers = csv.HeaderRecord.ToList();
-                    
+
                     var HeaderToValidate = HeadersToValidate.Split("||").ToList();
                     // Check if the headers match the expected headers
                     if (HeaderToValidate.All(item => headers.Contains(item)) && headers.All(item => HeaderToValidate.Contains(item)))

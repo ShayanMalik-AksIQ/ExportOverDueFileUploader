@@ -1,13 +1,7 @@
 ﻿using ExportOverDueFileUploader.Modles.JsonHelper;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ExportOverDueFileUploader.DataImporter
 {
@@ -40,7 +34,7 @@ namespace ExportOverDueFileUploader.DataImporter
 
         //public static List<string> CobFiColoums = new List<string>
         //{
-          
+
         //    "openAccountGdNumber",
         //    "modeOfPayment",
         //    "ExporterCity",
@@ -66,7 +60,7 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             try
             {
-                var x=_row["PAYLOAD"]?.ToString();
+                var x = _row["PAYLOAD"]?.ToString();
                 var InnerObj = JsonConvert.DeserializeObject<FIPayload>(_row["PAYLOAD"]?.ToString()).Data.ToString();
 
                 FiImportPayLoadJson payload = JsonConvert.DeserializeObject<FiImportPayLoadJson>(InnerObj);
@@ -101,11 +95,11 @@ namespace ExportOverDueFileUploader.DataImporter
                         _row["FiCertifcationdate"] = null;
                     }
 
-                    
+
                 }
 
-                
-                
+
+
 
             }
             catch
@@ -113,17 +107,19 @@ namespace ExportOverDueFileUploader.DataImporter
                 //Console.WriteLine(_row["ResponceCode"]?.ToString());
                 return;
             }
-            finally {
+            finally
+            {
                 if (_row["TransmissionDate"].ToString() != null)
                 {
                     try
                     {
-                        string dateString = _row["TransmissionDate"].ToString().Substring(0, 10); // Extract the first 10 characters
-                        string format = "dd/MM/yyyy";
-                        CultureInfo provider = CultureInfo.InvariantCulture;
 
-                        DateTime result = DateTime.ParseExact(dateString, format, provider);
-                        _row["TransmissionDate"] = result;
+                        //string dateString = _row["TransmissionDate"].ToString().Substring(0, 10); // Extract the first 10 characters
+                        //string format = "dd/MM/yyyy";
+                        //CultureInfo provider = CultureInfo.InvariantCulture;
+
+                        //DateTime result = DateTime.ParseExact(dateString, format, provider);
+                        _row["TransmissionDate"] = null;
 
                     }
                     catch
@@ -181,7 +177,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         _row["FiCertifcationdate"] = null;
                     }
-                    if(_row["TRANSACTION_TYPE"].ToString().IsNullOrEmpty() && _row["CREATED_DATETIME"].ToString().IsNullOrEmpty())
+                    if (_row["TRANSACTION_TYPE"].ToString().IsNullOrEmpty() && _row["CREATED_DATETIME"].ToString().IsNullOrEmpty())
                     {
                         _row["TRANSACTION_TYPE"] = "1524";
                     }
@@ -214,18 +210,18 @@ namespace ExportOverDueFileUploader.DataImporter
 
                     _row["BcaDate"] = new DateTime(d, b, a);
 
-             
+
                 }
 
             }
-            catch(Exception ex)
+            catch (Exception)
             {
-                 return;
+                return;
             }
 
         }
 
 
-        
+
     }
 }

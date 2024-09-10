@@ -1,23 +1,22 @@
 ﻿using ExportOverDueFileUploader.DBmodels;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ExportOverDueFileUploader.Modles.JsonHelper;
 using ExportOverDueFileUploader.Modles;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace ExportOverDueFileUploader.ValidateIqBizLogic
 {
-    public static class Comparison
+    public static class Compression
     {
-        public static List<ComparisonResult> CompareGdAndFi(string gdJson, string fiJson, List<ComparatorSetting> ComparatorSetting, long ReqStatusId)
+        public static List<ComparisonResult> CompareGdAndFi(string gdJson, string fiJson, List<ComparatorSetting> ComparatorSetting, long ReqStatusId, string BaseFeild = "FI")
         {
 
-            JToken? valuesGd = null;
-            JToken? valuesFi = null;
+            JToken? values1 = null;
+            JToken? values2 = null;
+            string Value1Json = "";
+            string Value2Json = "";
+            (Value1Json, Value2Json) = (BaseFeild == "GD") ? (gdJson, fiJson) : (BaseFeild == "FI") ? (fiJson, gdJson) : ("", "");
+            string TrailingFeild = (BaseFeild == "GD") ? "FI" : "GD";
+
             List<ComparisonResult> result = new List<ComparisonResult>();
             #region old
             //foreach (var setting in ComparatorSetting)
@@ -135,54 +134,49 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                 List<JToken> test = new List<JToken>();
                 try
                 {
-                    if ((setting.Entity1Key.Contains("[i]") && setting.Entity2Key.Contains("[i]")))
+                    if ((setting.Entity1Key.Contains("itemInformation[i]") && setting.Entity2Key.Contains("itemInformation[i]")))
                     {
                         int count = 1;
-                        var dd = setting.Entity2Key.Substring(0, setting.Entity2Key.IndexOf("[i]"));
-                        var ss = setting.Entity1Key.Substring(0, setting.Entity1Key.IndexOf("[i]"));
-                        var TokensGd = GetJsonListValues(gdJson, setting.Entity1Key.Substring(0, setting.Entity1Key.IndexOf("[i]")));
-                        var TokensFi = GetJsonListValues(fiJson, setting.Entity2Key.Substring(0, setting.Entity2Key.IndexOf("[i]")));
-                        int totalCount = Math.Min(TokensFi.Count(), TokensGd.Count());
+                        var Tokens1 = GetJsonListValues(Value1Json, setting.Entity1Key.Substring(0, setting.Entity1Key.IndexOf("[i]")));
+                        var Tokens2 = GetJsonListValues(Value2Json, setting.Entity2Key.Substring(0, setting.Entity2Key.IndexOf("[i]")));
 
-                        test = TokensGd;
-                        for (int i = 0; i < TokensGd.Count(); i++)
+
+                        int baseCounts = (BaseFeild == "GD") ? Tokens2.Count() : Tokens1.Count();
+                        int tralingCounts = (BaseFeild == "GD") ? Tokens1.Count() : Tokens2.Count();
+
+                        if (baseCounts == 2 && tralingCounts == 1)
                         {
-                            bool isMatched = false;
-                            string[] GdParts = setting.Entity1Key.Split('.');
-                            string GdLastPart = GdParts[^1];
-                            string[] FiParts = setting.Entity2Key.Split('.');
-                            string FiLastPart = FiParts[^1];
-                            valuesGd = TokensGd[i][GdLastPart];
-
-                            valuesGd = TokensGd[i]["hsCode"];
-
+                        }
+                        //test = TokensGd;
+                        for (int i = 0; i < baseCounts; i++)
+                        {
                             List<ComparisonResult> ComparisonResult = new List<ComparisonResult>();              //ALL RESULTS LIST THAT ARE TO BE FILTRED AND HIGHEST PRIORITY RECORD MUST BE INSERT IN result LIST
                             List<priorityRecord> priorityList = new List<priorityRecord>();
 
-                            for (int j = 0; j < TokensFi.Count(); j++)
+                            for (int j = 0; j < tralingCounts; j++)
                             {
                                 priorityRecord record = new priorityRecord();
-                                bool isEntityMatched, isUomMatched, isQuantityMatched = false;
-                                int comapreResult = 0;
-                                valuesGd = TokensGd[i]["hsCode"];
-                                valuesFi = TokensFi[j]["hsCode"];
+                                bool isEntityMatched, isUomMatched;
+                                int compareResult = 0;
+                                values1 = Tokens1[i]["hsCode"];
+                                values2 = Tokens2[j]["hsCode"];
 
                                 record.startIndex = ComparisonResult.Count();
 
-                                comapreResult = CompareJsonTokens(valuesGd, valuesFi);
-                                if (comapreResult == 1)
+                                compareResult = CompareJsonTokens(values1, values2);
+                                if (compareResult == 1)
                                 {
                                     //HsCode Match
 
                                     ComparisonResult.Add(new ComparisonResult
                                     {
-                                        ComparisonType = $"{setting.ValidationType} Comparrision : {count}",
+                                        ComparisonType = $"{setting.ValidationType} Comparison > FI-{i + 1}:GD-{j + 1}",
                                         Entity1Key = $"{setting.Entity1Key}",
                                         Entity2Key = $"{setting.Entity2Key}",
-                                        Entity1Value = valuesGd?.ToString(),
-                                        Entity2Value = valuesFi?.ToString(),
+                                        Entity1Value = values1?.ToString(),
+                                        Entity2Value = values2?.ToString(),
                                         ComparisonName = setting.ValidationType,
-                                        Result = CompareJsonTokens(valuesGd, valuesFi),
+                                        Result = CompareJsonTokens(values1, values2),
                                         RequestStatusId = ReqStatusId,
                                         TenantId = AppSettings.TenantId,
                                     });
@@ -190,46 +184,46 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
                                     if (isEntityMatched)
                                     {
-                                        valuesGd = TokensGd[i]["uom"];
-                                        valuesFi = TokensFi[j]["uom"];
-                                        ,
-                                        comapreResult = CompareJsonTokens(valuesGd, valuesFi);
-                                        if (comapreResult == 1)
+                                        values1 = Tokens1[i]["uom"];
+                                        values2 = Tokens2[j]["uom"];
+
+                                        compareResult = CompareJsonTokens(values1, values2);
+                                        if (compareResult == 1)
                                         {
                                             //UOM Matched
                                             ComparisonResult.Add(new ComparisonResult
                                             {
-                                                ComparisonType = $"UOM Comparrision : {count}",
-                                                Entity1Key = setting.Entity1Key.Replace("hscode", "uom").Replace("i", $"{i}"),
-                                                Entity2Key = setting.Entity1Key.Replace("hscode", "uom").Replace("i", $"{j}"),
-                                                Entity1Value = valuesGd?.ToString(),
-                                                Entity2Value = valuesFi?.ToString(),
-                                                ComparisonName = setting.ValidationType,
-                                                Result = CompareJsonTokens(valuesGd, valuesFi),
+                                                ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
+                                                Entity1Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),
+                                                Entity2Key = setting.Entity2Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),
+                                                Entity1Value = values1?.ToString(),
+                                                Entity2Value = values2?.ToString(),
+                                                ComparisonName = "UOM",
+                                                Result = CompareJsonTokens(values1, values2),
                                                 RequestStatusId = ReqStatusId,
-                                                TenantId=AppSettings.TenantId,
+                                                TenantId = AppSettings.TenantId,
                                             });
                                             isUomMatched = true;
 
                                             if (isUomMatched)
                                             {
-                                                valuesGd = TokensGd[i]["quantity"];
-                                                valuesFi = TokensFi[j]["quantity"];
+                                                values1 = Tokens1[i]["quantity"];
+                                                values2 = Tokens2[j]["quantity"];
 
-                                                comapreResult = CompareJsonTokens(valuesGd, valuesFi);
-                                                if (comapreResult == 1)
+                                                compareResult = CompareJsonTokens(values1, values2);
+                                                if (compareResult == 1)
                                                 {
                                                     //Quantity Matched
 
                                                     ComparisonResult.Add(new ComparisonResult
                                                     {
-                                                        ComparisonType = $"Quantity Comparrision : {count}",
-                                                        Entity1Key = setting.Entity1Key.Replace("hscode", "quantity").Replace("i", $"{i}"),
-                                                        Entity2Key = setting.Entity1Key.Replace("hscode", "quantity").Replace("i", $"{j}"),
-                                                        Entity1Value = valuesGd?.ToString(),
-                                                        Entity2Value = valuesFi?.ToString(),
-                                                        ComparisonName = setting.ValidationType,
-                                                        Result = CompareJsonTokens(valuesGd, valuesFi),
+                                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
+                                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
+                                                        Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),
+                                                        Entity1Value = values1?.ToString(),
+                                                        Entity2Value = values2?.ToString(),
+                                                        ComparisonName = "Quantity",
+                                                        Result = CompareJsonTokens(values1, values2),
                                                         RequestStatusId = ReqStatusId,
                                                         TenantId = AppSettings.TenantId,
                                                     });
@@ -246,12 +240,12 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
                                                     ComparisonResult.Add(new ComparisonResult
                                                     {
-                                                        ComparisonType = $"Quantity Comparrision : {count}",
-                                                        ComparisonName = setting.ValidationType,
-                                                        Entity1Key = setting.Entity1Key.Replace("hscode", "quantity").Replace("i", $"{i}"),
-                                                        Entity2Key = setting.Entity1Key.Replace("hscode", "quantity").Replace("i", $"{j}"),
-                                                        Entity1Value = valuesGd?.ToString(),
-                                                        Entity2Value = valuesFi?.ToString(),
+                                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
+                                                        ComparisonName = "Quantity",
+                                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
+                                                        Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),
+                                                        Entity1Value = values1?.ToString(),
+                                                        Entity2Value = values2?.ToString(),
                                                         Result = 0,
                                                         RequestStatusId = ReqStatusId,
                                                         TenantId = AppSettings.TenantId,
@@ -269,25 +263,25 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
                                             ComparisonResult.Add(new ComparisonResult
                                             {
-                                                ComparisonType = $"UOM Comparrision : {count}",
-                                                Entity1Key = setting.Entity1Key.Replace("hscode", "uom").Replace("i", $"{i}"),
-                                                Entity2Key = setting.Entity1Key.Replace("hscode", "uom").Replace("i", $"{j}"),
-                                                Entity1Value = valuesGd?.ToString(),
-                                                Entity2Value = valuesFi?.ToString(),
-                                                ComparisonName = setting.ValidationType,
+                                                ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
+                                                Entity2Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),
+                                                Entity1Key = setting.Entity2Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),
+                                                Entity1Value = values1?.ToString(),
+                                                Entity2Value = values2?.ToString(),
+                                                ComparisonName = "UOM",
                                                 Result = 0,
                                                 RequestStatusId = ReqStatusId,
                                                 TenantId = AppSettings.TenantId,
                                             });
                                             ComparisonResult.Add(new ComparisonResult
                                             {
-                                                ComparisonType = $"Quantity Comparrision : {count}",
-                                                Entity1Key = setting.Entity1Key.Replace("hscode", "quantity").Replace("i", $"{i}"),
-                                                Entity2Key = $"N/A",
-                                                Entity1Value = valuesGd?.ToString(),
-                                                ComparisonName = setting.ValidationType,
-                                                Entity2Value = valuesFi?.ToString(),
-                                                Result = 2,
+                                                ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
+                                                Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
+                                                Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
+                                                Entity1Value = Tokens1[i]["quantity"].ToString(),
+                                                Entity2Value = Tokens2[j]["quantity"].ToString(),
+                                                ComparisonName = "Quantity",
+                                                Result = CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"]),
                                                 RequestStatusId = ReqStatusId,
                                                 TenantId = AppSettings.TenantId,
                                             });
@@ -304,11 +298,11 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
                                     ComparisonResult.Add(new ComparisonResult
                                     {
-                                        ComparisonType = $"{setting.ValidationType} Comparrision : {count}",
+                                        ComparisonType = $"{setting.ValidationType} Comparison > FI-{i + 1}:GD-{j + 1}",
                                         Entity1Key = $"{setting.Entity1Key}",
                                         Entity2Key = $"{setting.Entity2Key}",
-                                        Entity1Value = valuesGd?.ToString(),
-                                        Entity2Value = valuesFi?.ToString(),
+                                        Entity1Value = values1?.ToString(),
+                                        Entity2Value = i < tralingCounts ? Tokens2[i]["hsCode"].ToString() : $"N/A",
                                         ComparisonName = setting.ValidationType,
                                         Result = 0,
                                         RequestStatusId = ReqStatusId,
@@ -316,25 +310,25 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                                     });
                                     ComparisonResult.Add(new ComparisonResult
                                     {
-                                        ComparisonType = $"UOM Comparrision : {count}",
-                                        Entity1Key = setting.Entity1Key.Replace("hscode", "uom").Replace("i", $"{i}"),                //Data.iteminfo[i].uom
-                                        Entity2Key = setting.Entity1Key.Replace("hscode", "uom").Replace("i", $"{i}"),                //Data.iteminfo[i].uom
-                                        Entity1Value = TokensGd[i]["uom"] != null ? TokensGd[i]["uom"].ToString() : "uom",
-                                        Entity2Value = "N/A",
-                                        ComparisonName = setting.ValidationType,
-                                        Result = 2,
+                                        ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
+                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),                //Data.iteminfo[i].uom
+                                        Entity2Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),                //Data.iteminfo[i].uom
+                                        Entity1Value = Tokens1[i]["uom"] != null ? Tokens1[i]["uom"].ToString() : "uom",
+                                        Entity2Value = i < tralingCounts ? Tokens2[i]["uom"].ToString() : $"N/A",
+                                        ComparisonName = "UOM",
+                                        Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["uom"], Tokens2[i]["uom"]) : 2,
                                         RequestStatusId = ReqStatusId,
                                         TenantId = AppSettings.TenantId,
                                     });
                                     ComparisonResult.Add(new ComparisonResult
                                     {
-                                        ComparisonType = $"Quantity Comparrision : {count}",
-                                        Entity1Key = setting.Entity1Key.Replace("hscode", "quantity").Replace("i", $"{i}"),           //Data.iteminfo[i].quantity
-                                        Entity2Key = setting.Entity1Key.Replace("hscode", "quantity").Replace("i", $"{i}"),           //Data.iteminfo[i].quantity
-                                        Entity1Value = TokensGd[i]["quantity"] != null ? TokensGd[i]["quantity"].ToString() : "quantity",
-                                        Entity2Value = "N/A",
-                                        ComparisonName = setting.ValidationType,
-                                        Result = 2,
+                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
+                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),           //Data.iteminfo[i].quantity
+                                        Entity2Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),           //Data.iteminfo[i].quantity
+                                        Entity1Value = Tokens1[i]["quantity"] != null ? Tokens1[i]["quantity"].ToString() : "quantity",
+                                        Entity2Value = i < tralingCounts ? Tokens2[j]["quantity"].ToString() : $"N/A",
+                                        ComparisonName = "Quantity",
+                                        Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[i]["quantity"]) : 2,
                                         RequestStatusId = ReqStatusId,
                                         TenantId = AppSettings.TenantId,
                                     });
@@ -366,17 +360,17 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                     }
                     else if (setting.Entity1Key.Contains(".Count()") && setting.Entity2Key.Contains(".Count()"))
                     {
-                        valuesGd = GetKeyJsonGetter(gdJson, setting.Entity1Key.Replace(".Count()", ""));
-                        valuesFi = GetKeyJsonGetter(fiJson, setting.Entity2Key.Replace(".Count()", ""));
+                        values1 = GetKeyJsonGetter(Value1Json, setting.Entity1Key.Replace(".Count()", ""));
+                        values2 = GetKeyJsonGetter(Value2Json, setting.Entity2Key.Replace(".Count()", ""));
                         result.Add(new ComparisonResult
                         {
                             ComparisonType = setting.ValidationType,
                             Entity1Key = setting.Entity1Key,
                             Entity2Key = setting.Entity2Key,
-                            Entity1Value = valuesGd?.Count().ToString(),
-                            Entity2Value = valuesFi?.Count().ToString(),
+                            Entity2Value = values2?.Count().ToString(),
+                            Entity1Value = values1?.Count().ToString(),
                             ComparisonName = setting.ValidationType,
-                            Result = CompareJsonTokens(valuesGd, valuesFi),
+                            Result = CompareJsonTokens(values1, values2),
                             RequestStatusId = ReqStatusId,
                             TenantId = AppSettings.TenantId,
                         });
@@ -385,43 +379,45 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                     {
                         if (setting.IsSameEntity == 1)
                         {
-                            valuesGd = GetKeyJsonGetter(gdJson, setting.Entity1Key);
-                            valuesFi = GetKeyJsonGetter(gdJson, setting.Entity2Key);
+                            values1 = GetKeyJsonGetter(Value1Json, setting.Entity1Key);
+                            values2 = GetKeyJsonGetter(Value1Json, setting.Entity2Key);
                         }
                         else if (setting.IsSameEntity == 2)
                         {
 
-                            valuesGd = GetKeyJsonGetter(fiJson, setting.Entity1Key);
-                            valuesFi = GetKeyJsonGetter(fiJson, setting.Entity2Key);
+                            values1 = GetKeyJsonGetter(Value2Json, setting.Entity1Key);
+                            values2 = GetKeyJsonGetter(Value2Json, setting.Entity2Key);
 
                         }
                         else
                         {
-                            valuesGd = GetKeyJsonGetter(gdJson, setting.Entity1Key);
-                            valuesFi = GetKeyJsonGetter(fiJson, setting.Entity2Key);
+                            values1 = GetKeyJsonGetter(Value1Json, setting.Entity1Key);
+                            values2 = GetKeyJsonGetter(Value2Json, setting.Entity2Key);
                         }
 
 
                         result.Add(new ComparisonResult
                         {
                             ComparisonType = setting.ValidationType,
-                            Entity1Key = setting.Entity1Key,
-                            Entity2Key = setting.Entity2Key,
-                            Entity1Value = valuesGd?.ToString(),
-                            Entity2Value = valuesFi?.ToString(),
+                            Entity1Key = $"{setting.Entity1Key}-({(setting.IsSameEntity == 2 ? TrailingFeild : BaseFeild)})",
+                            Entity2Key = $"{setting.Entity2Key}-({(setting.IsSameEntity == 1 ? BaseFeild : TrailingFeild)})",
+                            Entity2Value = values2?.ToString(),
+                            Entity1Value = values1?.ToString(),
                             ComparisonName = setting.ValidationType,
-                            Result = CompareJsonTokens(valuesGd, valuesFi),
+                            Result = CompareJsonTokens(values1, values2),
                             RequestStatusId = ReqStatusId,
                             TenantId = AppSettings.TenantId,
                         });
                     }
 
 
+
+
                 }
 
-                catch (Exception ex)
+                catch (Exception)
                 {
-
+                    throw;
 
                 }
             }
@@ -429,10 +425,32 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
 
         }
-        public static int CompareJsonTokens(JToken token1, JToken token2)
+        public static int CompareJsonTokens(JToken token1, JToken token2, JToken? token3 = null)
         {
             try
             {
+                if (token3 != null)
+                {
+                    if ((token1 != null || token2 != null) && ((token1.Type == JTokenType.Integer || token1.Type == JTokenType.Float) && (token2.Type == JTokenType.Integer || token2.Type == JTokenType.Float)))
+                    {
+                        double value1 = token1.Type == JTokenType.Float ? token1.Value<double>() : token1.Value<int>();
+                        double value2 = token2.Type == JTokenType.Float ? token2.Value<double>() : token2.Value<int>();
+                        double value3 = token3.Type == JTokenType.Float ? token2.Value<double>() : token3.Value<int>();
+
+                        double unitPriceFi = value1 / value3; // invoice price/quantity
+                        var Result = Math.Abs(unitPriceFi - value2);
+                        if (Result < 1 && Result > -1)
+                        {
+                            return 1;
+                        }
+                        else
+                        {
+                            return 0;
+                        }
+                    }
+                }
+
+
                 if (token1 == null || token2 == null)
                 {
                     return 1;
