@@ -1,18 +1,8 @@
-﻿using DocumentFormat.OpenXml.Drawing.Diagrams;
-using DocumentFormat.OpenXml.InkML;
-using DocumentFormat.OpenXml.Office2010.CustomUI;
-using DocumentFormat.OpenXml.Wordprocessing;
-using ExportOverDueFileUploader.DataImporter;
+﻿using ExportOverDueFileUploader.DataImporter;
 using ExportOverDueFileUploader.DBmodels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ExportOverDueFileUploader.DBHelper
 {
@@ -53,16 +43,16 @@ namespace ExportOverDueFileUploader.DBHelper
         {
             try
             {
-            var context = new ExportOverDueContext();
-            var Query = $"Delete from GD_FI_Link where GdId in ({string.Join(",", openAccountGdId)}) and FiId is null";
-            var result = context.Database.ExecuteSqlRaw(Query);
-            context.SaveChanges();
+                var context = new ExportOverDueContext();
+                var Query = $"Delete from GD_FI_Link where GdId in ({string.Join(",", openAccountGdId)}) and FiId is null";
+                var result = context.Database.ExecuteSqlRaw(Query);
+                context.SaveChanges();
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Seriloger.LoggerInstance.Error("Error Fetching RemoveLinkFI_GD_Link", ex.Message);
-                
+
             }
         }
 
@@ -203,7 +193,7 @@ namespace ExportOverDueFileUploader.DBHelper
                 //                                            })
                 //                                            .ToList();
 
-                List <FinancialInstrument> result = rawResult.Select(f => new FinancialInstrument
+                List<FinancialInstrument> result = rawResult.Select(f => new FinancialInstrument
                 {
                     Id = f.Id,
                     IsDeleted = f.IsDeleted,
@@ -254,7 +244,7 @@ namespace ExportOverDueFileUploader.DBHelper
                                          .SqlQuery<FisInGdView>(FormattableStringFactory.Create($"select id,LstfinInsUniqueNumbers from [FIsInGoodsDeclarations] where TenantId={TenantId}"))
                                          .ToList().Where(x => fis_gds.fis.Contains(x.LstfinInsUniqueNumbers)).Select(x => x.id).ToList();
 
-                  
+
 
                     result = rawResult.Select(g => new GoodsDeclaration
                     {
@@ -291,6 +281,7 @@ namespace ExportOverDueFileUploader.DBHelper
             {
                 field.TenantId = AppSettings.TenantId;
                 field.CreationTime = DateTime.Now;
+
             }
             var context = new ExportOverDueContext();
 
@@ -307,7 +298,7 @@ namespace ExportOverDueFileUploader.DBHelper
                 var result = new List<GoodsDeclarationImport>();
                 var rawResult = context.GoodsDeclarationImports
                         .Where(g => g.TenantId == TenantId && g.IsDeleted == false
-                               && g.FileAuditId == fileId)
+                               && g.FileAuditId == fileId && g.gdStatus == "05")
                         .Select(g => new
                         {
                             g.GDDate,
@@ -329,7 +320,7 @@ namespace ExportOverDueFileUploader.DBHelper
                     ModeOfPayment = g.ModeOfPayment,
                     gdNumber = g.gdNumber,
                     GDDate = g.GDDate,
-                    Payload= g.Payload,
+                    Payload = g.Payload,
 
                 }).ToList();
                 return result;
@@ -345,8 +336,7 @@ namespace ExportOverDueFileUploader.DBHelper
             try
             {
                 var context = new ExportOverDueContext();
-                // var ids= context.FinancialInstruments.Where(g => g.TenantId == TenantId && g.TRANSACTION_TYPE == "1524" && g.IsDeleted == false)
-                var rawResult = context.FinancialInstrumentImports.Where(g => g.TenantId == TenantId && g.IsDeleted == false && fis_gds.fis.Contains(g.FinInsUniqueNumber))
+                var rawResult = context.FinancialInstrumentImports.Where(g => g.TenantId == TenantId && g.IsDeleted == false && fis_gds.fis.Contains(g.FinInsUniqueNumber) && g.ResponseCode == "200")
                                                             .Select(f => new
                                                             {
                                                                 f.Id,
@@ -369,7 +359,7 @@ namespace ExportOverDueFileUploader.DBHelper
                     FinInsUniqueNumber = f.FinInsUniqueNumber,
                     modeOfPayment = f.modeOfPayment,
                     FiCertifcationDate = f.FiCertifcationDate,
-                    Payload= f.Payload
+                    Payload = f.Payload
                 }).ToList();
                 return result;
 
@@ -390,7 +380,7 @@ namespace ExportOverDueFileUploader.DBHelper
                 var result = new List<GoodsDeclarationImport>();
                 var rawResult = context.GoodsDeclarationImports
                         .Where(g => g.TenantId == TenantId && g.IsDeleted == false
-                               && fis_gds.fis.Contains(g.FinInsUniqueNumber))
+                               && fis_gds.fis.Contains(g.FinInsUniqueNumber) && g.gdStatus == "05")
                        .Select(g => new
                        {
                            g.GDDate,
@@ -412,7 +402,7 @@ namespace ExportOverDueFileUploader.DBHelper
                     ModeOfPayment = g.ModeOfPayment,
                     gdNumber = g.gdNumber,
                     GDDate = g.GDDate,
-                    Payload= g.Payload
+                    Payload = g.Payload
 
                 }).ToList();
 
@@ -430,7 +420,7 @@ namespace ExportOverDueFileUploader.DBHelper
             {
                 var context = new ExportOverDueContext();
                 var rawResult = context.FinancialInstrumentImports.Where(g => g.TenantId == TenantId && g.IsDeleted == false
-                                                                    && g.FileAuditId == fileId)
+                                                                    && g.FileAuditId == fileId && g.ResponseCode == "200")
                                                             .Select(f => new
                                                             {
                                                                 f.Id,
@@ -449,7 +439,7 @@ namespace ExportOverDueFileUploader.DBHelper
                     TenantId = f.TenantId,
                     FinInsUniqueNumber = f.FinInsUniqueNumber,
                     modeOfPayment = f.modeOfPayment,
-                    Payload= f.Payload
+                    Payload = f.Payload
                 }).ToList();
                 return result;
 
@@ -487,7 +477,7 @@ namespace ExportOverDueFileUploader.DBHelper
         {
             try
             {
-                string Query="";
+                string Query = "";
                 var context = new ExportOverDueContext();
 
                 if (Entity == "GoodsDeclaration")
@@ -511,7 +501,7 @@ namespace ExportOverDueFileUploader.DBHelper
                     return 0;
                 }
 
-                
+
                 var result = context.Database.ExecuteSqlRaw(Query);
                 Seriloger.LoggerInstance.Information($"{Entity} of file id:{FileAuditId} dublication Removed ");
                 return result;

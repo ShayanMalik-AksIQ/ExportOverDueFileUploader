@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
@@ -79,6 +77,8 @@ public partial class ExportOverDueContext : DbContext
         modelBuilder.Entity<FinancialInstrumentImport>(entity =>
         {
             entity.ToTable("FinancialInstrumentImport");
+
+            entity.HasIndex(e => e.BranchSegmentId, "IX_FinancialInstrumentImport_BranchSegmentId");
         });
 
         modelBuilder.Entity<GdFiLink>(entity =>

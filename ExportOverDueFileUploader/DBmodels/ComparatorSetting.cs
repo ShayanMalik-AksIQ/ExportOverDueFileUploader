@@ -24,4 +24,6 @@ public partial class ComparatorSetting
     public long? LastModifierUserId { get; set; }
 
     public int IsSameEntity { get; set; }
+
+    public bool CalculateVariance { get; set; }
 }

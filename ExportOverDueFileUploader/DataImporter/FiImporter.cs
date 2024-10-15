@@ -2,6 +2,7 @@
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System.Data;
+using System.Globalization;
 
 namespace ExportOverDueFileUploader.DataImporter
 {
@@ -71,6 +72,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     _row["ImporterNtn"] = payload.importerNtn;
                     _row["ImporterIban"] = payload.importerNtn;
                     _row["ImporterName"] = payload.importerName;
+                    //_row["openAccountGdNumber"] = payload?.openAccountData?.gdNumber;
 
                     if (!payload.finInsUniqueNumber.IsNullOrEmpty())
                     {
@@ -114,11 +116,11 @@ namespace ExportOverDueFileUploader.DataImporter
                     try
                     {
 
-                        //string dateString = _row["TransmissionDate"].ToString().Substring(0, 10); // Extract the first 10 characters
-                        //string format = "dd/MM/yyyy";
-                        //CultureInfo provider = CultureInfo.InvariantCulture;
+                        string dateString = _row["TransmissionDate"].ToString().Substring(0, 10); // Extract the first 10 characters
+                        string format = "dd/MM/yyyy";
+                        CultureInfo provider = CultureInfo.InvariantCulture;
 
-                        //DateTime result = DateTime.ParseExact(dateString, format, provider);
+                        DateTime result = DateTime.ParseExact(dateString, format, provider);
                         _row["TransmissionDate"] = null;
 
                     }
@@ -129,7 +131,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 }
                 else
                 {
-                    _row["FiCertifcationdate"] = null;
+                    _row["TransmissionDate"] = null;
                 }
             }
 

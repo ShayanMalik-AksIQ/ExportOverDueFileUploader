@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace ExportOverDueFileUploader.DBmodels;
+﻿namespace ExportOverDueFileUploader.DBmodels;
 
 public partial class ComparisonResult
 {
@@ -34,6 +31,8 @@ public partial class ComparisonResult
     public long? LastModifierUserId { get; set; }
 
     public long? GdFiLinkId { get; set; }
+
+    public decimal? Variance { get; set; }
 
     public virtual GdFiLink? GdFiLink { get; set; }
 

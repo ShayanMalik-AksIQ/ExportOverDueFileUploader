@@ -47,5 +47,7 @@ public partial class FinancialInstrumentImport
 
     public DateTime? DeletionTime { get; set; }
 
+    public long? BranchSegmentId { get; set; }
+
     public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = new List<GdFiLink>();
 }

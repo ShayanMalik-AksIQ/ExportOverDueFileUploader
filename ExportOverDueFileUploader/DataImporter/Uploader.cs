@@ -134,7 +134,7 @@ namespace ExportOverDueFileUploader.DataImporter
                             Seriloger.LoggerInstance.Error(ex.Message);
                         }
                     }
-                    FileReader.MoveFiles(fileType.FilePath, "*.xlsx", "*.csv");
+                    //FileReader.MoveFiles(fileType.FilePath, "*.xlsx", "*.csv");
 
 
                 }
@@ -268,7 +268,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
 
                     data.Columns.Add("TenantId");
-                    // data.Columns.Add("FileAuditId");
+                    data.Columns.Add("FileAuditId");
 
                     if (EntityName == "GoodsDeclarationImport")
                     {
@@ -290,7 +290,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         _row["IsDeleted"] = false;
                         _row["CreatorUserId"] = null;
                         _row["TenantId"] = tenantId;
-                        //_row["FileAuditId"] = FileID;
+                        _row["FileAuditId"] = FileID;
 
                         if (EntityName == "GoodsDeclarationImport")
                         {
@@ -443,17 +443,19 @@ namespace ExportOverDueFileUploader.DataImporter
 
                     string fi = row["FinInsUniqueNumber"].ToString();
 
+
                     if (fi != "")
                     {
                         fis.Add(fi);
                     }
+
                 }
                 return new NewFiGdFilterModel
                 {
                     fis = fis.Where(x => x != null && x != "")
                              .Distinct()
                              .ToList(),
-                    gds = null
+                    gds = gdNumberList
                 };
             }
             catch

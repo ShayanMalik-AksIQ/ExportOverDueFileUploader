@@ -622,20 +622,24 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                 {
                     if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
                     {
-                        var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).FirstOrDefault();
+                        var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).OrderByDescending(x => x.TransmissionDate).ToList();
                         if (FiData != null)
                         {
-                            Link.Add(new GdFiLink()
+                            foreach (var fi in FiData)
                             {
-                                Type = "Import",
-                                GdId = gd.Id,
-                                FiId = FiData.Id,
-                                ComparisonResults = Compression.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 11),
-                                CreationTime = DateTime.Now,
-                                IsDeleted = false,
-                                RequestStatusId = 12,
-                                TenantId = AppSettings.TenantId
-                            });
+
+                                Link.Add(new GdFiLink()
+                                {
+                                    Type = "Import",
+                                    GdId = gd.Id,
+                                    FiId = fi.Id,
+                                    ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
+                                    CreationTime = DateTime.Now,
+                                    IsDeleted = false,
+                                    RequestStatusId = 12,
+                                    TenantId = AppSettings.TenantId
+                                });
+                            }
                         }
                     }
                 }
@@ -692,7 +696,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 ComparisonResults = Compression.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 11),
                                 CreationTime = DateTime.Now,
                                 IsDeleted = false,
-                                RequestStatusId = 12,
+                                RequestStatusId = 11,
                                 TenantId = AppSettings.TenantId
                             });
                         }
