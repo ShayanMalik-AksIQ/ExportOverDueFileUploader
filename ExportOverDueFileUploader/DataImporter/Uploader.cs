@@ -1,6 +1,8 @@
 ﻿using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.MatuirtyBO;
+using ExportOverDueFileUploader.ValidateIqBizLogic;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
@@ -22,6 +24,24 @@ namespace ExportOverDueFileUploader.DataImporter
             TableNames.Add("BranchWiseSegments");
 
         }
+
+        public void Test()
+        {
+            ExportOverDueContext context = new ExportOverDueContext();
+            var settings = context.ComparatorSettings.ToList();
+            var figdLink = context.GdFiLinks
+                .Include(fg => fg.Fi)
+                .Include(fg => fg.Gd)
+                .FirstOrDefault();
+
+            var gd = figdLink?.Gd;
+            var fi = figdLink?.Fi;
+
+            var results = Compression.CompareGdAndFi(gd?.Payload ?? "", fi?.Payload ?? "", settings, 3);
+
+            results.ForEach(result => Console.WriteLine(result));
+        }
+
         public void Execution()
         {
             try

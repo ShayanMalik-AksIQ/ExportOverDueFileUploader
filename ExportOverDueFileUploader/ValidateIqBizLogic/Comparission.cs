@@ -21,42 +21,47 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
             (Value1Json, Value2Json) = (BaseFeild == "GD") ? (gdJson, fiJson) : (BaseFeild == "FI") ? (fiJson, gdJson) : ("", "");
             string TrailingFeild = (BaseFeild == "GD") ? "FI" : "GD";
 
-            List<ComparisonResult> result = new List<ComparisonResult>();
+            List<ComparisonResult> result = [];
             foreach (var setting in ComparatorSetting)
             {
-                List<JToken> test = new List<JToken>();
+                if (setting.Entity1Key is null || setting.Entity2Key is null)
+                {
+                    throw new Exception();
+                }
+
+                List<JToken> test = [];
                 try
                 {
-                    if ((setting.Entity1Key.Contains("itemInformation[i]") && setting.Entity2Key.Contains("itemInformation[i]")))
+                    if (setting.Entity1Key.Contains("itemInformation[i]") && setting.Entity2Key.Contains("itemInformation[i]"))
                     {
                         int count = 1;
-                        var Tokens1 = GetJsonListValues(Value1Json, setting.Entity1Key.Substring(0, setting.Entity1Key.IndexOf("[i]")));
-                        var Tokens2 = GetJsonListValues(Value2Json, setting.Entity2Key.Substring(0, setting.Entity2Key.IndexOf("[i]")));
+                        List<JToken> Tokens1 = GetJsonListValues(Value1Json, setting.Entity1Key[..setting.Entity1Key.IndexOf("[i]")]);
+                        List<JToken> Tokens2 = GetJsonListValues(Value2Json, setting.Entity2Key[..setting.Entity2Key.IndexOf("[i]")]);
 
+                        int baseCounts = (BaseFeild == "GD") ? Tokens2.Count : Tokens1.Count;
+                        int tralingCounts = (BaseFeild == "GD") ? Tokens1.Count : Tokens2.Count;
 
-                        int baseCounts = (BaseFeild == "GD") ? Tokens2.Count() : Tokens1.Count();
-                        int tralingCounts = (BaseFeild == "GD") ? Tokens1.Count() : Tokens2.Count();
-
-                        if (baseCounts == 2 && tralingCounts == 1)
-                        {
-                        }
+                        //if (baseCounts == 2 && tralingCounts == 1)
+                        //{
+                        //}
                         //test = TokensGd;
+
                         for (int i = 0; i < baseCounts; i++)
                         {
-                            List<ComparisonResult> ComparisonResult = new List<ComparisonResult>();              //ALL RESULTS LIST THAT ARE TO BE FILTRED AND HIGHEST PRIORITY RECORD MUST BE INSERT IN result LIST
-                            List<priorityRecord> priorityList = new List<priorityRecord>();
+                            List<ComparisonResult> ComparisonResult = [];              //ALL RESULTS LIST THAT ARE TO BE FILTRED AND HIGHEST PRIORITY RECORD MUST BE INSERT IN result LIST
+                            List<priorityRecord> priorityList = [];
 
                             for (int j = 0; j < tralingCounts; j++)
                             {
-                                priorityRecord record = new priorityRecord();
+                                priorityRecord record = new();
                                 bool isEntityMatched, isUomMatched;
                                 int compareResult = 0;
                                 values1 = Tokens1[i]["hsCode"];
                                 values2 = Tokens2[j]["hsCode"];
 
-                                record.startIndex = ComparisonResult.Count();
+                                record.startIndex = ComparisonResult.Count;
 
-                                var Comparision = CompareJsonTokens((values1), (values2), setting.CalculateVariance);
+                                var Comparision = CompareJsonTokens(values1, values2, setting.CalculateVariance);
                                 compareResult = Comparision.Result;
                                 if (compareResult == 1)
                                 {
@@ -180,8 +185,8 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                                                 ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
                                                 Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
                                                 Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
-                                                Entity1Value = Tokens1[i]["quantity"].ToString(),
-                                                Entity2Value = Tokens2[j]["quantity"].ToString(),
+                                                Entity1Value = Tokens1[i]["quantity"]?.ToString(),
+                                                Entity2Value = Tokens2[j]["quantity"]?.ToString(),
                                                 ComparisonName = "Quantity",
                                                 Result = CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], setting.CalculateVariance).Result,
                                                 Variance = CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], true).Variance,
@@ -191,7 +196,7 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
                                             //PRIORITY CODE 1
                                             record.priority = 1;
-                                            record.endIndex = ComparisonResult.Count();
+                                            record.endIndex = ComparisonResult.Count;
                                         }
                                     }
                                 }
@@ -205,7 +210,7 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                                         Entity1Key = $"{setting.Entity1Key}",
                                         Entity2Key = $"{setting.Entity2Key}",
                                         Entity1Value = values1?.ToString(),
-                                        Entity2Value = i < tralingCounts ? Tokens2[i]["hsCode"].ToString() : $"N/A",
+                                        Entity2Value = i < tralingCounts ? Tokens2[i]["hsCode"]?.ToString() : $"N/A",
                                         ComparisonName = setting.ValidationType,
                                         Result = 0,
                                         RequestStatusId = ReqStatusId,
@@ -217,8 +222,8 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                                         ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
                                         Entity1Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),                //Data.iteminfo[i].uom
                                         Entity2Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),                //Data.iteminfo[i].uom
-                                        Entity1Value = Tokens1[i]["uom"] != null ? Tokens1[i]["uom"].ToString() : "uom",
-                                        Entity2Value = i < tralingCounts ? Tokens2[j]["uom"].ToString() : $"N/A",
+                                        Entity1Value = Tokens1[i]["uom"] != null ? Tokens1[i]["uom"]?.ToString() : "uom",
+                                        Entity2Value = i < tralingCounts ? Tokens2[j]["uom"]?.ToString() : $"N/A",
                                         ComparisonName = "UOM",
                                         Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["uom"], Tokens2[j]["uom"], setting.CalculateVariance).Result : 2,
                                         Variance = CompareJsonTokens(Tokens1[i]["uom"], Tokens2[j]["uom"], true).Variance,
@@ -231,8 +236,8 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                                         ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
                                         Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),           //Data.iteminfo[i].quantity
                                         Entity2Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),           //Data.iteminfo[i].quantity
-                                        Entity1Value = Tokens1[i]["quantity"] != null ? Tokens1[i]["quantity"].ToString() : "quantity",
-                                        Entity2Value = j < tralingCounts ? Tokens2[j]["quantity"].ToString() : $"N/A",
+                                        Entity1Value = Tokens1[i]["quantity"] != null ? Tokens1[i]["quantity"]?.ToString() : "quantity",
+                                        Entity2Value = j < tralingCounts ? Tokens2[j]["quantity"]?.ToString() : $"N/A",
                                         Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], setting.CalculateVariance).Result : 2,
                                         Variance = CompareJsonTokens((Tokens1[i]["quantity"]), (Tokens2[j]["quantity"]), true).Variance,
                                         RequestStatusId = ReqStatusId,
@@ -242,7 +247,7 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
                                     //PRIORITY CODE 0
                                     record.priority = 0;
-                                    record.endIndex = ComparisonResult.Count();
+                                    record.endIndex = ComparisonResult.Count;
                                 }
 
                                 priorityList.Add(record);
@@ -319,10 +324,6 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                             TenantId = AppSettings.TenantId,
                         });
                     }
-
-
-
-
                 }
 
                 catch (Exception)
@@ -335,54 +336,23 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
 
         }
-        public static ResultAndVariance CompareJsonTokens(JToken token1, JToken token2, bool CalculateVariance, JToken? token3 = null)
+        public static ResultAndVariance CompareJsonTokens(JToken? token1, JToken? token2, bool CalculateVariance)
         {
-            ResultAndVariance result = new ResultAndVariance();
+            ResultAndVariance result = new();
             try
             {
-                if (token3 != null)
-                {
-                    if ((token1 != null || token2 != null) && ((token1.Type == JTokenType.Integer || token1.Type == JTokenType.Float) && (token2.Type == JTokenType.Integer || token2.Type == JTokenType.Float)))
-                    {
-
-                        double value1 = token1.Type == JTokenType.Float ? token1.Value<double>() : token1.Value<int>();
-                        double value2 = token2.Type == JTokenType.Float ? token2.Value<double>() : token2.Value<int>();
-                        double value3 = token3.Type == JTokenType.Float ? token2.Value<double>() : token3.Value<int>();
-
-                        double unitPriceFi = value1 / value3; // invoice price/quantity
-                        var Result = Math.Abs(unitPriceFi - value2);
-
-                        if (Result < 1 && Result > -1)
-                        {
-                            result.Result = 1;
-                        }
-                        else
-                        {
-                            result.Result = 0;
-                        }
-
-
-                        if (CalculateVariance)
-                        {
-
-                            result.Variance = CalculateVariances(TryConvertToFloat(unitPriceFi), TryConvertToFloat(value2));
-                        }
-
-                    }
-                }
-
-
-                if (token1 == null || token2 == null)
+                if (token1 is null || token2 is null)
                 {
                     result.Result = 1;
                 }
-                if ((token1 != null || token2 != null) && ((token1.Type == JTokenType.Integer || token1.Type == JTokenType.Float) && (token2.Type == JTokenType.Integer || token2.Type == JTokenType.Float)))
+                else if (token1 is not null && token2 is not null && (token1.Type == JTokenType.Integer || token1.Type == JTokenType.Float) && (token2.Type == JTokenType.Integer || token2.Type == JTokenType.Float))
                 {
                     double value1 = token1.Type == JTokenType.Float ? token1.Value<double>() : token1.Value<int>();
                     double value2 = token2.Type == JTokenType.Float ? token2.Value<double>() : token2.Value<int>();
                     var x = Math.Abs(value1 - value2);
 
-                    if (Math.Abs(value1 - value2) < 1 && Math.Abs(value1 - value2) > -1)
+                    //if (Math.Abs(value1 - value2) < 1 && Math.Abs(value1 - value2) > -1)
+                    if (x < 1 && x > -1)
                     {
                         result.Result = 1;
                     }
@@ -392,14 +362,14 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                     }
                     if (CalculateVariance)
                     {
-                        if (!(Math.Abs(value1 - value2) < 1 && Math.Abs(value1 - value2) > -1))
+                        if (!(x < 1 && x > -1))
                         {
-
                             result.Variance = CalculateVariances(TryConvertToFloat(value1), TryConvertToFloat(value2));
                         }
                     }
                 }
-                else if (token1.Type == JTokenType.Array || token1.Type == JTokenType.Array)
+                //else if (token1.Type == JTokenType.Array || token1.Type == JTokenType.Array)
+                else if (token1 is not null && token2 is not null && (token1.Type == JTokenType.Array || token2.Type == JTokenType.Array))
                 {
                     if (token1.Count() == token2.Count())
                     {
@@ -411,11 +381,10 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                     }
                     if (CalculateVariance)
                     {
-
                         result.Variance = CalculateVariances(TryConvertToFloat(token1.Count()), TryConvertToFloat(token2.Count()));
                     }
                 }
-                else if (token1.Type == JTokenType.String)
+                else if (token1 is not null && token2 is not null && (token1.Type == JTokenType.String && token2.Type == JTokenType.String))
                 {
                     if (string.Compare(token1.ToString(), token2.ToString(), StringComparison.OrdinalIgnoreCase) == 0)
                     {
@@ -425,12 +394,10 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                     {
                         result.Result = 0;
                     }
-
                 }
-
                 else
                 {
-                    if (JToken.Equals(token1, token2))
+                    if (Equals(token1, token2))
                     {
                         result.Result = 1;
                     }
@@ -438,11 +405,8 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                     {
                         result.Result = 0;
                     }
-
                 }
-
                 return result;
-
             }
             catch (Exception ex)
             {
@@ -454,17 +418,8 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
         public static JToken? GetKeyJsonGetter(string jsonString, string key)
         {
             JObject jsonObject = JObject.Parse(jsonString);
-            JToken token = jsonObject.SelectToken(key);
-
-            if (token != null)
-            {
-                return token;
-            }
-            else
-            {
-                return null;
-            }
-
+            JToken? token = jsonObject.SelectToken(key);
+            return token;
         }
         //public static int CompareJsonTokens(JToken token1, JToken token2)
         //{
@@ -536,19 +491,20 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
         {
 
             JObject jsonObject = JObject.Parse(jsonString);
-            JToken token = jsonObject.SelectToken(key);
+            JToken? token = jsonObject.SelectToken(key);
 
-            if (token != null && token.Type == JTokenType.Array)
-            {
-                return token.ToList();
-            }
-            else
-            {
-                List<JToken> x = new List<JToken>();
-                var data = jsonObject.SelectToken(key);
-                x.Add(data);
-                return x;
-            }
+            return (token is not null && token.Type == JTokenType.Array) ? [.. token] : [];
+            //if (token != null && token.Type == JTokenType.Array)
+            //{
+            //    return token.ToList();
+            //}
+            //else
+            //{
+            //    List<JToken> x = new List<JToken>();
+            //    var data = jsonObject.SelectToken(key);
+            //    x.Add(data);
+            //    return x;
+            //}
         }
 
 
@@ -556,28 +512,25 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
         {
             try
             {
-                if (val1 != null && val2 != null)
+                decimal? variance = null;
+                if (val1 is not null && val2 is not null)
                 {
-                    decimal variance = 0;
-                    if ((((val1.Value - val2.Value) / val1.Value) * 100) > 100)
+                    float v = ((val1.Value - val2.Value) / val1.Value) * 100;
+
+                    if (v > 100)
                     {
                         variance = 101;
                     }
-                    else if ((((val1.Value - val2.Value) / val1.Value) * 100) < -100)
+                    else if (v < -100)
                     {
                         variance = -101;
                     }
                     else
                     {
-                        variance = (decimal)((val1.Value - val2.Value) / val1.Value) * 100;
+                        variance = (decimal)v;
                     }
-
-                    return variance;
                 }
-                else
-                {
-                    return null;
-                }
+                return variance;
             }
             catch (Exception ex)
             {
@@ -586,11 +539,11 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
             }
         }
 
-        private static float? TryConvertToFloat(object value)
+        private static float? TryConvertToFloat(object? value)
         {
             try
             {
-                if (value == null)
+                if (value is null)
                 {
                     return null;
                 }

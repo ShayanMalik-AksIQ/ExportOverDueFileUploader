@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace ExportOverDueFileUploader.DBmodels;
+﻿namespace ExportOverDueFileUploader.DBmodels;
 
 public partial class FinancialInstrumentImport
 {
@@ -49,5 +46,5 @@ public partial class FinancialInstrumentImport
 
     public long? BranchSegmentId { get; set; }
 
-    public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = new List<GdFiLink>();
+    public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = [];
 }

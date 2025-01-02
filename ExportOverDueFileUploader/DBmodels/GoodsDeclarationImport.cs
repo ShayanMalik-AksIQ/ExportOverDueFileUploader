@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Text.Json.Serialization;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
@@ -49,5 +48,5 @@ public partial class GoodsDeclarationImport
 
     public DateTime? DeletionTime { get; set; }
 
-    public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = new List<GdFiLink>();
+    public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = [];
 }
