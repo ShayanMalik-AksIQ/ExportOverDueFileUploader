@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace ExportOverDueFileUploader.DBmodels;
+﻿namespace ExportOverDueFileUploader.DBmodels;
 
 public partial class GdFiLink
 {

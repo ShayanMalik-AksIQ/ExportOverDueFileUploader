@@ -47,4 +47,6 @@ public partial class FinancialInstrumentImport
     public long? BranchSegmentId { get; set; }
 
     public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = [];
+
+    public IEnumerable<ComparisonResult>? ComparisonResults { get; set; }
 }

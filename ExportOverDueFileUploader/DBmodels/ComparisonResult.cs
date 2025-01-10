@@ -1,4 +1,6 @@
-﻿namespace ExportOverDueFileUploader.DBmodels;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace ExportOverDueFileUploader.DBmodels;
 
 public partial class ComparisonResult
 {
@@ -35,6 +37,11 @@ public partial class ComparisonResult
     public decimal? Variance { get; set; }
 
     public virtual GdFiLink? GdFiLink { get; set; }
+
+
+    public long? FiId { get; set; }
+    [ForeignKey("FiId")]
+    public virtual FinancialInstrumentImport? Fi { get; set; }
 
     public virtual RequestStatus? RequestStatus { get; set; }
     public override string ToString()

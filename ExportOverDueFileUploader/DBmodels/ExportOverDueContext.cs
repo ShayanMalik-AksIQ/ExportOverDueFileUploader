@@ -117,6 +117,12 @@ public partial class ExportOverDueContext : DbContext
             entity.HasOne(d => d.Module).WithMany(p => p.RequestStatuses).HasForeignKey(d => d.ModuleID);
         });
 
+
+        modelBuilder.Entity<ComparisonResult>(b =>
+        {
+            b.HasOne(b => b.Fi).WithMany(b => b.ComparisonResults);
+        });
+
         OnModelCreatingPartial(modelBuilder);
     }
 

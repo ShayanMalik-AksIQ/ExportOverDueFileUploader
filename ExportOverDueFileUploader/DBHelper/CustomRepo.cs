@@ -289,6 +289,14 @@ namespace ExportOverDueFileUploader.DBHelper
             context.SaveChanges();
         }
 
+        public static void InsertFI_GD_ComparisonResult(List<ComparisonResult> results)
+        {
+            var context = new ExportOverDueContext();
+
+            context.ComparisonResults.AddRange(results);
+            context.SaveChanges();
+        }
+
         #region Sync newGD
         public static List<GoodsDeclarationImport> GetGoodsDeclarationImportForLink(long TenantId, long fileId)
         {

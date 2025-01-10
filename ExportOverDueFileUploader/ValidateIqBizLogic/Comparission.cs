@@ -1,5 +1,7 @@
-﻿using ExportOverDueFileUploader.DBmodels;
+﻿using System.Text.Json.Nodes;
+using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.Modles;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace ExportOverDueFileUploader.ValidateIqBizLogic
@@ -11,318 +13,139 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
     }
     public static class Compression
     {
-        public static List<ComparisonResult> CompareGdAndFi(string gdJson, string fiJson, List<ComparatorSetting> ComparatorSetting, long ReqStatusId, string BaseFeild = "FI")
-        {
+        private static Queue<ComparatorSetting> summaryItems = new();
+        private static HashSet<string> seen = [];
+        private static JToken? values1 = null;
+        private static JToken? values2 = null;
+        private static string Value1Json = "";
+        private static string Value2Json = "";
+        //private static ExportOverDueContext _context = new();
 
-            JToken? values1 = null;
-            JToken? values2 = null;
-            string Value1Json = "";
-            string Value2Json = "";
+        //public static IDictionary<string, List<ComparisonResult>> CompareGdAndFi(List<FiGds> fiGds, List<ComparatorSetting> ComparatorSetting, long ReqStatusId, string BaseFeild = "FI")
+        public static List<ComparisonResult> CompareGdAndFi(List<FiGds> fiGds, List<ComparatorSetting> ComparatorSetting, long ReqStatusId, string BaseFeild = "FI")
+        {
+            //IDictionary<string, List<ComparisonResult>> results = new Dictionary<string, List<ComparisonResult>>();
+            List<ComparisonResult> summaryResults = [];
+            List<ComparisonResult> comparisonResults = [];
+
+            foreach (FiGds fiGd in fiGds)
+            {
+                foreach (var gd in fiGd.Gds)
+                {
+                    var result = CompareGdAndFi(JsonConvert.SerializeObject(gd.GdNotSerialized), fiGd.FiPayload, ComparatorSetting, ReqStatusId, BaseFeild, gd.GdFiId);
+                    //results.Add(gd.GdNotSerialized.SelectToken("data.gdNumber")?.ToString() ?? "", result);
+                    comparisonResults.AddRange(result);
+                }
+
+                while (summaryItems.Count > 0)
+                {
+                    var setting = summaryItems.Dequeue();
+
+                    if (setting.Entity1Key is null || setting.Entity2Key is null)
+                        continue;
+
+                    if (setting.Entity1Key.Contains("itemInformation[i]") && setting.Entity2Key.Contains("itemInformation[i]"))
+                    {
+                        summaryResults.AddRange(
+                            ProcessItemInformation(
+                                JsonConvert.SerializeObject(fiGd.GdsNotSerialized),
+                                fiGd.FiPayload,
+                                setting,
+                                ReqStatusId,
+                                BaseFeild,
+                                fiGd.FiId
+                            )
+                        );
+                    }
+                    else if (setting.Entity1Key.Contains(".Count()") && setting.Entity2Key.Contains(".Count()"))
+                    {
+                        summaryResults.AddRange(
+                            ProcessItemCounts(
+                                JsonConvert.SerializeObject(fiGd.GdsNotSerialized),
+                                fiGd.FiPayload,
+                                setting,
+                                ReqStatusId,
+                                BaseFeild,
+                                fiGd.FiId
+                            )
+                        );
+                    }
+                    else
+                    {
+                        summaryResults.AddRange(
+                            ProcessFields(
+                                JsonConvert.SerializeObject(fiGd.GdsNotSerialized),
+                                fiGd.FiPayload,
+                                ReqStatusId,
+                                setting,
+                                BaseFeild,
+                                fiGd.FiId
+                            )
+                        );
+                    }
+                }
+                //results.Add(Guid.NewGuid().ToString(), summaryResults);
+                seen = [];
+                //_context.ComparisonResults.AddRange(comparisonResults);
+                //_context.SaveChanges();
+            }
+            comparisonResults.AddRange(summaryResults);
+            //return results;
+            return comparisonResults;
+        }
+
+        public static List<ComparisonResult> CompareGdAndFi(string gdJson, string fiJson, List<ComparatorSetting> ComparatorSetting, long ReqStatusId, string BaseFeild = "FI", long? gId = null)
+        {
             (Value1Json, Value2Json) = (BaseFeild == "GD") ? (gdJson, fiJson) : (BaseFeild == "FI") ? (fiJson, gdJson) : ("", "");
-            string TrailingFeild = (BaseFeild == "GD") ? "FI" : "GD";
+            //string TrailingFeild = (BaseFeild == "GD") ? "FI" : "GD";
 
             List<ComparisonResult> result = [];
             foreach (var setting in ComparatorSetting)
             {
-                if (setting.Entity1Key is null || setting.Entity2Key is null)
-                {
-                    throw new Exception();
-                }
-
                 List<JToken> test = [];
                 try
                 {
+                    if (setting.Entity1Key is null || setting.Entity2Key is null)
+                    {
+                        throw new Exception();
+                    }
+                    string uniqueKey = $"{setting.Entity1Key}-{setting.Entity2Key}";
+
                     if (setting.Entity1Key.Contains("itemInformation[i]") && setting.Entity2Key.Contains("itemInformation[i]"))
                     {
-                        int count = 1;
-                        List<JToken> Tokens1 = GetJsonListValues(Value1Json, setting.Entity1Key[..setting.Entity1Key.IndexOf("[i]")]);
-                        List<JToken> Tokens2 = GetJsonListValues(Value2Json, setting.Entity2Key[..setting.Entity2Key.IndexOf("[i]")]);
-
-                        int baseCounts = (BaseFeild == "GD") ? Tokens2.Count : Tokens1.Count;
-                        int tralingCounts = (BaseFeild == "GD") ? Tokens1.Count : Tokens2.Count;
-
-                        //if (baseCounts == 2 && tralingCounts == 1)
-                        //{
-                        //}
-                        //test = TokensGd;
-
-                        for (int i = 0; i < baseCounts; i++)
+                        if (seen.Contains(uniqueKey))
                         {
-                            List<ComparisonResult> ComparisonResult = [];              //ALL RESULTS LIST THAT ARE TO BE FILTRED AND HIGHEST PRIORITY RECORD MUST BE INSERT IN result LIST
-                            List<priorityRecord> priorityList = [];
-
-                            for (int j = 0; j < tralingCounts; j++)
-                            {
-                                priorityRecord record = new();
-                                bool isEntityMatched, isUomMatched;
-                                int compareResult = 0;
-                                values1 = Tokens1[i]["hsCode"];
-                                values2 = Tokens2[j]["hsCode"];
-
-                                record.startIndex = ComparisonResult.Count;
-
-                                var Comparision = CompareJsonTokens(values1, values2, setting.CalculateVariance);
-                                compareResult = Comparision.Result;
-                                if (compareResult == 1)
-                                {
-                                    //HsCode Match
-
-                                    ComparisonResult.Add(new ComparisonResult
-                                    {
-                                        ComparisonType = $"{setting.ValidationType} Comparison > FI-{i + 1}:GD-{j + 1}",
-                                        Entity1Key = $"{setting.Entity1Key}",
-                                        Entity2Key = $"{setting.Entity2Key}",
-                                        Entity1Value = values1?.ToString(),
-                                        Entity2Value = values2?.ToString(),
-                                        ComparisonName = setting.ValidationType,
-                                        Result = Comparision.Result,
-                                        Variance = Comparision.Variance,
-                                        RequestStatusId = ReqStatusId,
-                                        TenantId = AppSettings.TenantId,
-                                    });
-                                    isEntityMatched = true;
-
-                                    if (isEntityMatched)
-                                    {
-                                        values1 = Tokens1[i]["uom"];
-                                        values2 = Tokens2[j]["uom"];
-
-                                        Comparision = CompareJsonTokens(values1, values2, true);
-                                        compareResult = Comparision.Result;
-                                        if (compareResult == 1)
-                                        {
-                                            //UOM Matched
-                                            ComparisonResult.Add(new ComparisonResult
-                                            {
-                                                ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
-                                                Entity1Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),
-                                                Entity2Key = setting.Entity2Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),
-                                                Entity1Value = values1?.ToString(),
-                                                Entity2Value = values2?.ToString(),
-                                                ComparisonName = "UOM",
-                                                Result = Comparision.Result,
-                                                Variance = Comparision.Variance,
-                                                RequestStatusId = ReqStatusId,
-                                                TenantId = AppSettings.TenantId,
-                                            });
-                                            isUomMatched = true;
-
-                                            if (isUomMatched)
-                                            {
-                                                values1 = Tokens1[i]["quantity"];
-                                                values2 = Tokens2[j]["quantity"];
-                                                Comparision = CompareJsonTokens(values1, values2, true);
-                                                compareResult = Comparision.Result;
-                                                if (compareResult == 1)
-                                                {
-                                                    //Quantity Matched
-
-                                                    ComparisonResult.Add(new ComparisonResult
-                                                    {
-                                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
-                                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
-                                                        Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),
-                                                        Entity1Value = values1?.ToString(),
-                                                        Entity2Value = values2?.ToString(),
-                                                        ComparisonName = "Quantity",
-                                                        Result = Comparision.Result,
-                                                        Variance = Comparision.Variance,
-                                                        RequestStatusId = ReqStatusId,
-                                                        TenantId = AppSettings.TenantId,
-                                                    });
-
-                                                    //STATUS CODE 3
-                                                    //PRIORITY CODE 3
-                                                    record.priority = 3;
-                                                    record.endIndex = ComparisonResult.Count();
-
-                                                }
-                                                else
-                                                {
-                                                    Comparision = CompareJsonTokens(values1, values2, true);
-                                                    compareResult = Comparision.Result;
-                                                    //Quantity is Not Matched
-
-                                                    ComparisonResult.Add(new ComparisonResult
-                                                    {
-                                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
-                                                        ComparisonName = "Quantity",
-                                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
-                                                        Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),
-                                                        Entity1Value = values1?.ToString(),
-                                                        Entity2Value = values2?.ToString(),
-                                                        Result = Comparision.Result,
-                                                        Variance = Comparision.Variance,
-                                                        RequestStatusId = ReqStatusId,
-                                                        TenantId = AppSettings.TenantId,
-                                                    });
-
-                                                    //PRIORITY CODE 2
-                                                    record.priority = 2;
-                                                    record.endIndex = ComparisonResult.Count();
-                                                }
-                                            }
-                                        }
-                                        else
-                                        {
-                                            // UOM Not Matched
-
-                                            ComparisonResult.Add(new ComparisonResult
-                                            {
-                                                ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
-                                                Entity2Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),
-                                                Entity1Key = setting.Entity2Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),
-                                                Entity1Value = values1?.ToString(),
-                                                Entity2Value = values2?.ToString(),
-                                                ComparisonName = "UOM",
-                                                Result = Comparision.Result,
-                                                Variance = Comparision.Variance,
-                                                RequestStatusId = ReqStatusId,
-                                                TenantId = AppSettings.TenantId,
-                                            });
-                                            ComparisonResult.Add(new ComparisonResult
-                                            {
-                                                ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
-                                                Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
-                                                Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
-                                                Entity1Value = Tokens1[i]["quantity"]?.ToString(),
-                                                Entity2Value = Tokens2[j]["quantity"]?.ToString(),
-                                                ComparisonName = "Quantity",
-                                                Result = CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], setting.CalculateVariance).Result,
-                                                Variance = CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], true).Variance,
-                                                RequestStatusId = ReqStatusId,
-                                                TenantId = AppSettings.TenantId,
-                                            });
-
-                                            //PRIORITY CODE 1
-                                            record.priority = 1;
-                                            record.endIndex = ComparisonResult.Count;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    //HsCode Not Matched
-
-                                    ComparisonResult.Add(new ComparisonResult
-                                    {
-                                        ComparisonType = $"{setting.ValidationType} Comparison > FI-{i + 1}:GD-{j + 1}",
-                                        Entity1Key = $"{setting.Entity1Key}",
-                                        Entity2Key = $"{setting.Entity2Key}",
-                                        Entity1Value = values1?.ToString(),
-                                        Entity2Value = i < tralingCounts ? Tokens2[i]["hsCode"]?.ToString() : $"N/A",
-                                        ComparisonName = setting.ValidationType,
-                                        Result = 0,
-                                        RequestStatusId = ReqStatusId,
-                                        TenantId = AppSettings.TenantId,
-                                    });
-
-                                    ComparisonResult.Add(new ComparisonResult
-                                    {
-                                        ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
-                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),                //Data.iteminfo[i].uom
-                                        Entity2Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),                //Data.iteminfo[i].uom
-                                        Entity1Value = Tokens1[i]["uom"] != null ? Tokens1[i]["uom"]?.ToString() : "uom",
-                                        Entity2Value = i < tralingCounts ? Tokens2[j]["uom"]?.ToString() : $"N/A",
-                                        ComparisonName = "UOM",
-                                        Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["uom"], Tokens2[j]["uom"], setting.CalculateVariance).Result : 2,
-                                        Variance = CompareJsonTokens(Tokens1[i]["uom"], Tokens2[j]["uom"], true).Variance,
-                                        RequestStatusId = ReqStatusId,
-                                        TenantId = AppSettings.TenantId,
-                                    });
-
-                                    ComparisonResult.Add(new ComparisonResult
-                                    {
-                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
-                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),           //Data.iteminfo[i].quantity
-                                        Entity2Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),           //Data.iteminfo[i].quantity
-                                        Entity1Value = Tokens1[i]["quantity"] != null ? Tokens1[i]["quantity"]?.ToString() : "quantity",
-                                        Entity2Value = j < tralingCounts ? Tokens2[j]["quantity"]?.ToString() : $"N/A",
-                                        Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], setting.CalculateVariance).Result : 2,
-                                        Variance = CompareJsonTokens((Tokens1[i]["quantity"]), (Tokens2[j]["quantity"]), true).Variance,
-                                        RequestStatusId = ReqStatusId,
-                                        ComparisonName = "Quantity",
-                                        TenantId = AppSettings.TenantId,
-                                    });
-
-                                    //PRIORITY CODE 0
-                                    record.priority = 0;
-                                    record.endIndex = ComparisonResult.Count;
-                                }
-
-                                priorityList.Add(record);
-                                count++;
-                            }
-
-                            //SELECTING ONLY HIGHEST PRIORITY ITEM ONLY
-                            var highestPriorityItem = priorityList.MaxBy(x => x.priority);
-                            if (highestPriorityItem != null)
-                            {
-                                var highestPriorityRecord = ComparisonResult.GetRange(highestPriorityItem.startIndex, highestPriorityItem.endIndex - highestPriorityItem.startIndex);
-                                foreach (var item in highestPriorityRecord)
-                                {
-                                    if (highestPriorityRecord[0].Result == 0)
-                                    {
-
-                                    }
-                                    result.Add(item);
-                                }
-                            }
+                            continue;
                         }
+                        summaryItems.Enqueue(setting);
+                        seen.Add(uniqueKey);
+                        continue;
                     }
                     else if (setting.Entity1Key.Contains(".Count()") && setting.Entity2Key.Contains(".Count()"))
                     {
-                        values1 = GetKeyJsonGetter(Value1Json, setting.Entity1Key.Replace(".Count()", ""));
-                        values2 = GetKeyJsonGetter(Value2Json, setting.Entity2Key.Replace(".Count()", ""));
-                        var Comparision = CompareJsonTokens(values1, values2, setting.CalculateVariance);
-                        result.Add(new ComparisonResult
+                        if (seen.Contains(uniqueKey))
                         {
-                            ComparisonType = setting.ValidationType,
-                            Entity1Key = setting.Entity1Key,
-                            Entity2Key = setting.Entity2Key,
-                            Entity2Value = values2?.Count().ToString(),
-                            Entity1Value = values1?.Count().ToString(),
-                            ComparisonName = setting.ValidationType,
-                            Result = Comparision.Result,
-                            Variance = Comparision.Variance,
-                            RequestStatusId = ReqStatusId,
-                            TenantId = AppSettings.TenantId,
-                        });
+                            continue;
+                        }
+                        summaryItems.Enqueue(setting);
+                        seen.Add(uniqueKey);
+                        continue;
                     }
                     else
                     {
-                        if (setting.IsSameEntity == 1)
+                        if (setting.Entity1Key == "data.financialInfo.assessedValueUsd"
+                            || setting.Entity1Key == "data.paymentInformation.financialInstrumentValue")
                         {
-                            values1 = GetKeyJsonGetter(Value1Json, setting.Entity1Key);
-                            values2 = GetKeyJsonGetter(Value1Json, setting.Entity2Key);
+                            if (seen.Contains(uniqueKey))
+                            {
+                                continue;
+                            }
+                            summaryItems.Enqueue(setting);
+                            seen.Add(uniqueKey);
+                            continue;
                         }
-                        else if (setting.IsSameEntity == 2)
-                        {
-
-                            values1 = GetKeyJsonGetter(Value2Json, setting.Entity1Key);
-                            values2 = GetKeyJsonGetter(Value2Json, setting.Entity2Key);
-
-                        }
-                        else
-                        {
-                            values1 = GetKeyJsonGetter(Value1Json, setting.Entity1Key);
-                            values2 = GetKeyJsonGetter(Value2Json, setting.Entity2Key);
-                        }
-
-                        var Comparision = CompareJsonTokens(TryConvertToFloat(values1), TryConvertToFloat(values2), setting.CalculateVariance);
-                        result.Add(new ComparisonResult
-                        {
-                            ComparisonType = setting.ValidationType,
-                            Entity1Key = $"{setting.Entity1Key}-({(setting.IsSameEntity == 2 ? TrailingFeild : BaseFeild)})",
-                            Entity2Key = $"{setting.Entity2Key}-({(setting.IsSameEntity == 1 ? BaseFeild : TrailingFeild)})",
-                            Entity2Value = values2?.ToString(),
-                            Entity1Value = values1?.ToString(),
-                            ComparisonName = setting.ValidationType,
-                            Result = Comparision.Result,
-                            Variance = Comparision?.Variance,
-                            RequestStatusId = ReqStatusId,
-                            TenantId = AppSettings.TenantId,
-                        });
+                        var res = ProcessFields(gdJson, fiJson, ReqStatusId, setting, BaseFeild, gId: gId);
+                        result.AddRange(res);
                     }
                 }
 
@@ -333,9 +156,519 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                 }
             }
             return result;
-
-
         }
+
+        private static List<ComparisonResult> ProcessFields(string gdJson, string fiJson, long ReqStatusId, ComparatorSetting setting, string BaseFeild = "FI", long? fId = null, long? gId = null )
+        {
+            try
+            {
+                List<ComparisonResult> result = [];
+
+                (Value1Json, Value2Json) = (BaseFeild == "GD") ? (gdJson, fiJson) : (BaseFeild == "FI") ? (fiJson, gdJson) : ("", "");
+                string TrailingFeild = (BaseFeild == "GD") ? "FI" : "GD";
+
+                if (setting.Entity1Key is null || setting.Entity2Key is null)
+                {
+                    throw new Exception();
+                }
+
+                if (setting.IsSameEntity == 1)
+                {
+                    values1 = GetKeyJsonGetter(Value1Json, setting.Entity1Key);
+                    values2 = GetKeyJsonGetter(Value1Json, setting.Entity2Key);
+                }
+                else if (setting.IsSameEntity == 2)
+                {
+                    values1 = GetKeyJsonGetter(Value2Json, setting.Entity1Key);
+                    values2 = GetKeyJsonGetter(Value2Json, setting.Entity2Key);
+                }
+                else
+                {
+                    values1 = GetKeyJsonGetter(Value1Json, setting.Entity1Key);
+                    values2 = GetKeyJsonGetter(Value2Json, setting.Entity2Key);
+                }
+
+                var Comparision = CompareJsonTokens(TryConvertToFloat(values1), TryConvertToFloat(values2), setting.CalculateVariance);
+                result.Add(new ComparisonResult
+                {
+                    ComparisonType = setting.ValidationType,
+                    Entity1Key = $"{setting.Entity1Key}-({(setting.IsSameEntity == 2 ? TrailingFeild : BaseFeild)})",
+                    Entity2Key = $"{setting.Entity2Key}-({(setting.IsSameEntity == 1 ? BaseFeild : TrailingFeild)})",
+                    Entity2Value = values2?.ToString(),
+                    Entity1Value = values1?.ToString(),
+                    ComparisonName = setting.ValidationType,
+                    Result = Comparision.Result,
+                    Variance = Comparision?.Variance,
+                    RequestStatusId = ReqStatusId,
+                    TenantId = AppSettings.TenantId,
+                    FiId = fId,
+                    GdFiLinkId = gId
+                });
+
+                return result;
+            }
+            catch (Exception)
+            {
+
+                return [];
+            }
+        }
+
+        //private static List<ComparisonResult> ProcessItemInformation(string gdJson, string fiJson, ComparatorSetting setting, long ReqStatusId, string BaseFeild = "FI", long? fId = null, long? gId = null)
+        //{
+
+        //    try
+        //    {
+        //        (Value1Json, Value2Json) = (BaseFeild == "GD") ? (gdJson, fiJson) : (BaseFeild == "FI") ? (fiJson, gdJson) : ("", "");
+        //        string TrailingFeild = (BaseFeild == "GD") ? "FI" : "GD";
+        //        List<ComparisonResult> result = [];
+
+        //        if (setting.Entity1Key is null || setting.Entity2Key is null)
+        //        {
+        //            throw new Exception();
+        //        }
+
+        //        int count = 1;
+        //        List<JToken> Tokens1 = GetJsonListValues(Value1Json, setting.Entity1Key[..setting.Entity1Key.IndexOf("[i]")]);
+        //        List<JToken> Tokens2 = GetJsonListValues(Value2Json, setting.Entity2Key[..setting.Entity2Key.IndexOf("[i]")]);
+
+
+        //        int baseCounts = (BaseFeild == "GD") ? Tokens2.Count : Tokens1.Count;
+        //        int tralingCounts = (BaseFeild == "GD") ? Tokens1.Count : Tokens2.Count;
+
+        //        for (int i = 0; i < baseCounts; i++)
+        //        {
+        //            List<ComparisonResult> ComparisonResult = [];
+        //            List<priorityRecord> priorityList = [];
+
+        //            for (int j = 0; j < tralingCounts; j++)
+        //            {
+        //                priorityRecord record = new();
+        //                bool isEntityMatched, isUomMatched;
+        //                int compareResult = 0;
+        //                values1 = Tokens1[i]["hsCode"];
+        //                values2 = Tokens2[j]["hsCode"];
+
+        //                record.startIndex = ComparisonResult.Count;
+
+        //                var Comparision = CompareJsonTokens(values1, values2, setting.CalculateVariance);
+        //                compareResult = Comparision.Result;
+        //                if (compareResult == 1)
+        //                {
+        //                    //HsCode Match
+
+        //                    ComparisonResult.Add(new ComparisonResult
+        //                    {
+        //                        ComparisonType = $"{setting.ValidationType} Comparison > FI-{i + 1}:GD-{j + 1}",
+        //                        Entity1Key = $"{setting.Entity1Key}",
+        //                        Entity2Key = $"{setting.Entity2Key}",
+        //                        Entity1Value = values1?.ToString(),
+        //                        Entity2Value = values2?.ToString(),
+        //                        ComparisonName = setting.ValidationType,
+        //                        Result = Comparision.Result,
+        //                        Variance = Comparision.Variance,
+        //                        RequestStatusId = ReqStatusId,
+        //                        TenantId = AppSettings.TenantId,
+        //                        FiId = fId,
+        //                        GdFiLinkId = gId
+        //                    });
+        //                    isEntityMatched = true;
+
+        //                    if (isEntityMatched)
+        //                    {
+        //                        values1 = Tokens1[i]["uom"];
+        //                        values2 = Tokens2[j]["uom"];
+
+        //                        Comparision = CompareJsonTokens(values1, values2, true);
+        //                        compareResult = Comparision.Result;
+        //                        if (compareResult == 1)
+        //                        {
+        //                            //UOM Matched
+        //                            ComparisonResult.Add(new ComparisonResult
+        //                            {
+        //                                ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
+        //                                Entity1Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),
+        //                                Entity2Key = setting.Entity2Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),
+        //                                Entity1Value = values1?.ToString(),
+        //                                Entity2Value = values2?.ToString(),
+        //                                ComparisonName = "UOM",
+        //                                Result = Comparision.Result,
+        //                                Variance = Comparision.Variance,
+        //                                RequestStatusId = ReqStatusId,
+        //                                TenantId = AppSettings.TenantId,
+        //                                FiId = fId,
+        //                                GdFiLinkId = gId
+        //                            });
+        //                            isUomMatched = true;
+
+        //                            if (isUomMatched)
+        //                            {
+        //                                values1 = Tokens1[i]["quantity"];
+        //                                values2 = Tokens2[j]["quantity"];
+        //                                Comparision = CompareJsonTokens(values1, values2, true);
+        //                                compareResult = Comparision.Result;
+        //                                if (compareResult == 1)
+        //                                {
+        //                                    //Quantity Matched
+
+        //                                    ComparisonResult.Add(new ComparisonResult
+        //                                    {
+        //                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
+        //                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
+        //                                        Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),
+        //                                        Entity1Value = values1?.ToString(),
+        //                                        Entity2Value = values2?.ToString(),
+        //                                        ComparisonName = "Quantity",
+        //                                        Result = Comparision.Result,
+        //                                        Variance = Comparision.Variance,
+        //                                        RequestStatusId = ReqStatusId,
+        //                                        TenantId = AppSettings.TenantId,
+        //                                        FiId = fId,
+        //                                        GdFiLinkId = gId
+        //                                    });
+
+        //                                    //STATUS CODE 3
+        //                                    //PRIORITY CODE 3
+        //                                    record.priority = 3;
+        //                                    record.endIndex = ComparisonResult.Count();
+
+        //                                }
+        //                                else
+        //                                {
+        //                                    Comparision = CompareJsonTokens(values1, values2, true);
+        //                                    compareResult = Comparision.Result;
+        //                                    //Quantity is Not Matched
+
+        //                                    ComparisonResult.Add(new ComparisonResult
+        //                                    {
+        //                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
+        //                                        ComparisonName = "Quantity",
+        //                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
+        //                                        Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),
+        //                                        Entity1Value = values1?.ToString(),
+        //                                        Entity2Value = values2?.ToString(),
+        //                                        Result = Comparision.Result,
+        //                                        Variance = Comparision.Variance,
+        //                                        RequestStatusId = ReqStatusId,
+        //                                        TenantId = AppSettings.TenantId,
+        //                                        FiId = fId,
+        //                                        GdFiLinkId = gId
+        //                                    });
+
+        //                                    //PRIORITY CODE 2
+        //                                    record.priority = 2;
+        //                                    record.endIndex = ComparisonResult.Count;
+        //                                }
+        //                            }
+        //                        }
+        //                        else
+        //                        {
+        //                            // UOM Not Matched
+
+        //                            ComparisonResult.Add(new ComparisonResult
+        //                            {
+        //                                ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
+        //                                Entity2Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),
+        //                                Entity1Key = setting.Entity2Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),
+        //                                Entity1Value = values1?.ToString(),
+        //                                Entity2Value = values2?.ToString(),
+        //                                ComparisonName = "UOM",
+        //                                Result = Comparision.Result,
+        //                                Variance = Comparision.Variance,
+        //                                RequestStatusId = ReqStatusId,
+        //                                TenantId = AppSettings.TenantId,
+        //                                FiId = fId,
+        //                                GdFiLinkId = gId
+        //                            });
+        //                            ComparisonResult.Add(new ComparisonResult
+        //                            {
+        //                                ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
+        //                                Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
+        //                                Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
+        //                                Entity1Value = Tokens1[i]["quantity"]?.ToString(),
+        //                                Entity2Value = Tokens2[j]["quantity"]?.ToString(),
+        //                                ComparisonName = "Quantity",
+        //                                Result = CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], setting.CalculateVariance).Result,
+        //                                Variance = CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], true).Variance,
+        //                                RequestStatusId = ReqStatusId,
+        //                                TenantId = AppSettings.TenantId,
+        //                                FiId = fId,
+        //                                GdFiLinkId = gId
+        //                            });
+
+        //                            //PRIORITY CODE 1
+        //                            record.priority = 1;
+        //                            record.endIndex = ComparisonResult.Count;
+        //                        }
+        //                    }
+        //                }
+        //                else
+        //                {
+        //                    //HsCode Not Matched
+
+        //                    ComparisonResult.Add(new ComparisonResult
+        //                    {
+        //                        ComparisonType = $"{setting.ValidationType} Comparison > FI-{i + 1}:GD-{j + 1}",
+        //                        Entity1Key = $"{setting.Entity1Key}",
+        //                        Entity2Key = $"{setting.Entity2Key}",
+        //                        Entity1Value = values1?.ToString(),
+        //                        Entity2Value = i < tralingCounts ? Tokens2[i]["hsCode"]?.ToString() : $"N/A",
+        //                        ComparisonName = setting.ValidationType,
+        //                        Result = 0,
+        //                        RequestStatusId = ReqStatusId,
+        //                        TenantId = AppSettings.TenantId,
+        //                        FiId = fId,
+        //                        GdFiLinkId = gId
+        //                    });
+
+        //                    ComparisonResult.Add(new ComparisonResult
+        //                    {
+        //                        ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
+        //                        Entity1Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),                //Data.iteminfo[i].uom
+        //                        Entity2Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),                //Data.iteminfo[i].uom
+        //                        Entity1Value = Tokens1[i]["uom"] != null ? Tokens1[i]["uom"]?.ToString() : "uom",
+        //                        Entity2Value = i < tralingCounts ? Tokens2[j]["uom"]?.ToString() : $"N/A",
+        //                        ComparisonName = "UOM",
+        //                        Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["uom"], Tokens2[j]["uom"], setting.CalculateVariance).Result : 2,
+        //                        Variance = CompareJsonTokens(Tokens1[i]["uom"], Tokens2[j]["uom"], true).Variance,
+        //                        RequestStatusId = ReqStatusId,
+        //                        TenantId = AppSettings.TenantId,
+        //                        FiId = fId,
+        //                        GdFiLinkId = gId
+        //                    });
+
+        //                    ComparisonResult.Add(new ComparisonResult
+        //                    {
+        //                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
+        //                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),           //Data.iteminfo[i].quantity
+        //                        Entity2Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),           //Data.iteminfo[i].quantity
+        //                        Entity1Value = Tokens1[i]["quantity"] != null ? Tokens1[i]["quantity"]?.ToString() : "quantity",
+        //                        Entity2Value = j < tralingCounts ? Tokens2[j]["quantity"]?.ToString() : $"N/A",
+        //                        Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], setting.CalculateVariance).Result : 2,
+        //                        Variance = CompareJsonTokens((Tokens1[i]["quantity"]), (Tokens2[j]["quantity"]), true).Variance,
+        //                        RequestStatusId = ReqStatusId,
+        //                        ComparisonName = "Quantity",
+        //                        TenantId = AppSettings.TenantId,
+        //                        FiId = fId,
+        //                        GdFiLinkId = gId
+        //                    });
+
+        //                    //PRIORITY CODE 0
+        //                    record.priority = 0;
+        //                    record.endIndex = ComparisonResult.Count;
+        //                }
+
+        //                priorityList.Add(record);
+        //                count++;
+        //            }
+
+        //            //SELECTING ONLY HIGHEST PRIORITY ITEM ONLY
+        //            var highestPriorityItem = priorityList.MaxBy(x => x.priority);
+        //            if (highestPriorityItem != null)
+        //            {
+        //                var highestPriorityRecord = ComparisonResult.GetRange(highestPriorityItem.startIndex, highestPriorityItem.endIndex - highestPriorityItem.startIndex);
+        //                foreach (var item in highestPriorityRecord)
+        //                {
+        //                    if (highestPriorityRecord[0].Result == 0)
+        //                    {
+
+        //                    }
+        //                    result.Add(item);
+        //                }
+        //            }
+        //        }
+        //        return result;
+        //    }
+        //    catch (Exception)
+        //    {
+        //        return [];
+        //    }
+        //}
+
+
+        private static List<ComparisonResult> ProcessItemInformation(string gdJson, string fiJson, ComparatorSetting setting, long ReqStatusId, string BaseFeild = "FI", long? fId = null, long? gId = null)
+        {
+            try
+            {
+                var (Value1Json, Value2Json) = (BaseFeild == "GD") ? (gdJson, fiJson) : (BaseFeild == "FI") ? (fiJson, gdJson) : ("", "");
+                string TrailingFeild = (BaseFeild == "GD") ? "FI" : "GD";
+                var result = new List<ComparisonResult>();
+
+                if (setting.Entity1Key == null || setting.Entity2Key == null)
+                {
+                    throw new Exception("Entity keys cannot be null.");
+                }
+
+                var Tokens1 = GetJsonListValues(Value1Json, setting.Entity1Key[..setting.Entity1Key.IndexOf("[i]")]);
+                var Tokens2 = GetJsonListValues(Value2Json, setting.Entity2Key[..setting.Entity2Key.IndexOf("[i]")]);
+
+                // Build a hash map for Tokens2 based on hsCode
+                var tokens2Map = Tokens2
+                    .GroupBy(token => token["hsCode"]?.ToString())
+                    .ToDictionary(group => group.Key!, group => group.ToList());
+
+                foreach (var token1 in Tokens1)
+                {
+                    var hsCode1 = token1["hsCode"]?.ToString();
+                    if (hsCode1 == null || !tokens2Map.TryGetValue(hsCode1, out var matchingTokens2))
+                    {
+                        // hsCode does not match
+                        result.Add(new ComparisonResult
+                        {
+                            ComparisonType = $"{setting.ValidationType} Comparison > FI",
+                            Entity1Key = setting.Entity1Key,
+                            Entity2Key = setting.Entity2Key,
+                            Entity1Value = token1["hsCode"]?.ToString(),
+                            Entity2Value = "N/A",
+                            ComparisonName = setting.ValidationType,
+                            Result = 0,
+                            RequestStatusId = ReqStatusId,
+                            TenantId = AppSettings.TenantId,
+                            FiId = fId,
+                            GdFiLinkId = gId
+                        });
+                        continue;
+                    }
+
+                    // Iterate over matching tokens with the same hsCode
+                    foreach (var token2 in matchingTokens2)
+                    {
+                        //Hs Code Matches but have to do explicit match for variance.
+                        var hsCode2 = token1["hsCode"]?.ToString();
+                        var hsCodeComparision = CompareJsonTokens(hsCode1, hsCode2, setting.CalculateVariance);
+
+                        result.Add(new ComparisonResult
+                        {
+                            ComparisonType = $"{setting.ValidationType} Comparison > FI",
+                            Entity1Key = setting.Entity1Key,
+                            Entity2Key = setting.Entity2Key,
+                            Entity1Value = hsCode1,
+                            Entity2Value = hsCode2,
+                            ComparisonName = setting.ValidationType,
+                            Result = hsCodeComparision.Result,
+                            Variance = hsCodeComparision.Variance,
+                            RequestStatusId = ReqStatusId,
+                            TenantId = AppSettings.TenantId,
+                            FiId = fId,
+                            GdFiLinkId = gId
+                        });
+
+                        var uom1 = token1["uom"]?.ToString();
+                        var uom2 = token2["uom"]?.ToString();
+
+                        var uomComparison = CompareJsonTokens(uom1, uom2, setting.CalculateVariance);
+                        //if (uomComparison.Result == 1)
+                        //{
+                            // uom matches
+                            result.Add(new ComparisonResult
+                            {
+                                ComparisonType = $"UOM Comparison > FI",
+                                Entity1Key = setting.Entity1Key.Replace("hsCode", "uom"),
+                                Entity2Key = setting.Entity2Key.Replace("hsCode", "uom"),
+                                Entity1Value = uom1,
+                                Entity2Value = uom2,
+                                ComparisonName = "UOM",
+                                Result = uomComparison.Result,
+                                Variance = uomComparison.Variance,
+                                RequestStatusId = ReqStatusId,
+                                TenantId = AppSettings.TenantId,
+                                FiId = fId,
+                                GdFiLinkId = gId
+                            });
+
+                            // Perform additional comparisons for quantity
+                            var quantity1 = token1["quantity"];
+                            var quantity2 = token2["quantity"];
+                            var quantityComparison = CompareJsonTokens(quantity1, quantity2, setting.CalculateVariance);
+
+                            result.Add(new ComparisonResult
+                            {
+                                ComparisonType = $"Quantity Comparison > FI",
+                                Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity"),
+                                Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity"),
+                                Entity1Value = quantity1?.ToString(),
+                                Entity2Value = quantity2?.ToString(),
+                                ComparisonName = "Quantity",
+                                Result = quantityComparison.Result,
+                                Variance = quantityComparison.Variance,
+                                RequestStatusId = ReqStatusId,
+                                TenantId = AppSettings.TenantId,
+                                FiId = fId,
+                                GdFiLinkId = gId
+                            });
+                        //}
+                        //else
+                        //{
+                        //    // uom does not match
+                        //    result.Add(new ComparisonResult
+                        //    {
+                        //        ComparisonType = $"UOM Comparison > FI",
+                        //        Entity1Key = setting.Entity1Key.Replace("hsCode", "uom"),
+                        //        Entity2Key = setting.Entity2Key.Replace("hsCode", "uom"),
+                        //        Entity1Value = uom1,
+                        //        Entity2Value = uom2,
+                        //        ComparisonName = "UOM",
+                        //        Result = uomComparison.Result,
+                        //        Variance = uomComparison.Variance,
+                        //        RequestStatusId = ReqStatusId,
+                        //        TenantId = AppSettings.TenantId,
+                        //        FiId = fId,
+                        //        GdFiLinkId = gId
+                        //    });
+                        //}
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return [];
+            }
+        }
+
+
+        private static List<ComparisonResult> ProcessItemCounts(string gdJson, string fiJson, ComparatorSetting setting, long ReqStatusId, string BaseFeild = "FI", long? fId = null, long? gId = null)
+        {
+            try
+            {
+                if (setting.Entity1Key is null || setting.Entity2Key is null)
+                {
+                    throw new Exception();
+                }
+                (Value1Json, Value2Json) = (BaseFeild == "GD") ? (gdJson, fiJson) : (BaseFeild == "FI") ? (fiJson, gdJson) : ("", "");
+                string TrailingFeild = (BaseFeild == "GD") ? "FI" : "GD";
+                List<ComparisonResult> result = [];
+
+                values1 = GetKeyJsonGetter(Value1Json, setting.Entity1Key.Replace(".Count()", ""));
+                values2 = GetKeyJsonGetter(Value2Json, setting.Entity2Key.Replace(".Count()", ""));
+                var Comparision = CompareJsonTokens(values1, values2, setting.CalculateVariance);
+                result.Add(new ComparisonResult
+                {
+                    ComparisonType = setting.ValidationType,
+                    Entity1Key = setting.Entity1Key,
+                    Entity2Key = setting.Entity2Key,
+                    Entity2Value = values2?.Count().ToString(),
+                    Entity1Value = values1?.Count().ToString(),
+                    ComparisonName = setting.ValidationType,
+                    Result = Comparision.Result,
+                    Variance = Comparision.Variance,
+                    RequestStatusId = ReqStatusId,
+                    TenantId = AppSettings.TenantId,
+                    FiId = fId,
+                    GdFiLinkId = gId
+                });
+
+                return result;
+            }
+            catch (Exception)
+            {
+                return [];
+            }
+        }
+
+
         public static ResultAndVariance CompareJsonTokens(JToken? token1, JToken? token2, bool CalculateVariance)
         {
             ResultAndVariance result = new();
@@ -351,7 +684,6 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                     double value2 = token2.Type == JTokenType.Float ? token2.Value<double>() : token2.Value<int>();
                     var x = Math.Abs(value1 - value2);
 
-                    //if (Math.Abs(value1 - value2) < 1 && Math.Abs(value1 - value2) > -1)
                     if (x < 1 && x > -1)
                     {
                         result.Result = 1;
@@ -368,7 +700,6 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                         }
                     }
                 }
-                //else if (token1.Type == JTokenType.Array || token1.Type == JTokenType.Array)
                 else if (token1 is not null && token2 is not null && (token1.Type == JTokenType.Array || token2.Type == JTokenType.Array))
                 {
                     if (token1.Count() == token2.Count())
@@ -417,94 +748,251 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
         public static JToken? GetKeyJsonGetter(string jsonString, string key)
         {
-            JObject jsonObject = JObject.Parse(jsonString);
-            JToken? token = jsonObject.SelectToken(key);
-            return token;
+            try
+            {
+                JObject jsonObject = JObject.Parse(jsonString);
+                JToken? token = jsonObject.SelectToken(key);
+
+                if (token?.Type == JTokenType.Array)
+                {
+                    //IEnumerable<JToken> jsonArray = ((JArray)token).AsEnumerable();
+                    //var tokens = jsonArray
+                    //.SelectMany(ja => ja.SelectTokens(key))
+                    ////.Distinct()
+                    //.ToList();
+
+                    var groupedItems = token
+                    .GroupBy(item => new
+                    {
+                        hsCode = item["hsCode"]?.ToString(),
+                        uom = item["uom"]?.ToString()
+                    })
+                    .Select(group =>
+                    {
+                        return new JObject
+                        {
+                            ["hsCode"] = group.Key.hsCode,
+                            ["uom"] = group.Key.uom,
+                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                        };
+                    })
+                    .Cast<JToken>()
+                    .ToList();
+                    return new JArray(groupedItems);
+                }
+
+                return token;
+            }
+            catch (Exception)
+            {
+                JArray jsonArray = JArray.Parse(jsonString);
+
+                var tokens = jsonArray
+                    .SelectMany(ja => ja.SelectTokens(key))
+                    //.Distinct()
+                    .ToList();
+
+                var numericTokens = tokens
+                    .Where(t => t.Type == JTokenType.Float || t.Type == JTokenType.Integer)
+                    .ToList();
+
+                if (IsListOfLists(tokens))
+                {
+                    var flattenedTokens = FlattenListOfLists(tokens);
+                    var groupedItems = flattenedTokens
+                    .GroupBy(item => new
+                    {
+                        hsCode = item["hsCode"]?.ToString(),
+                        uom = item["uom"]?.ToString()
+                    })
+                    .Select(group =>
+                    {
+                        return new JObject
+                        {
+                            ["hsCode"] = group.Key.hsCode,
+                            ["uom"] = group.Key.uom,
+                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                        };
+                    })
+                    .Cast<JToken>()
+                    .ToList();
+                    return new JArray(groupedItems);
+                }
+                else if (numericTokens.Count != 0)
+                {
+                    var sum = numericTokens.Sum(t => t.Value<decimal>());
+                    return sum;
+                }
+
+                var tokenFromTokensLst = tokens
+                    .FirstOrDefault()?
+                    .SelectToken(key);
+
+                if (tokenFromTokensLst?.Type ==  JTokenType.Float)
+                {
+                    return tokenFromTokensLst.Value<decimal>();
+                }
+
+                var groupedItemsofLst =
+                    tokenFromTokensLst?
+                    .GroupBy(item => new
+                    {
+                        hsCode = item["hsCode"]?.ToString(),
+                        uom = item["uom"]?.ToString()
+                    })
+                    .Select(group =>
+                    {
+                        return new JObject
+                        {
+                            ["hsCode"] = group.Key.hsCode,
+                            ["uom"] = group.Key.uom,
+                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                        };
+                    })
+                    .Cast<JToken>()
+                    .ToList();
+                return new JArray(groupedItemsofLst ?? []);
+                //return tokens.FirstOrDefault();
+            }
         }
-        //public static int CompareJsonTokens(JToken token1, JToken token2)
-        //{
-        //    try
-        //    {
-        //        if (token1 == null || token2 == null)
-        //        {
-        //            return 1;
-        //        }
-        //        if ((token1 != null || token2 != null) && ((token1.Type == JTokenType.Integer || token1.Type == JTokenType.Float) && (token2.Type == JTokenType.Integer || token2.Type == JTokenType.Float)))
-        //        {
-        //            double value1 = token1.Type == JTokenType.Float ? token1.Value<double>() : token1.Value<int>();
-        //            double value2 = token2.Type == JTokenType.Float ? token2.Value<double>() : token2.Value<int>();
-        //            var x = Math.Abs(value1 - value2);
-
-        //            if (Math.Abs(value1 - value2) < 1 && Math.Abs(value1 - value2) > -1)
-        //            {
-        //                return 1;
-        //            }
-        //            else
-        //            {
-        //                return 0;
-        //            }
-        //        }
-        //        else if (token1.Type == JTokenType.Array || token1.Type == JTokenType.Array)
-        //        {
-        //            if (token1.Count() == token2.Count())
-        //            {
-        //                return 1;
-        //            }
-        //            else
-        //            {
-        //                return 0;
-        //            }
-        //        }
-        //        else if (token1.Type == JTokenType.String)
-        //        {
-        //            if (string.Compare(token1.ToString(), token2.ToString(), StringComparison.OrdinalIgnoreCase) == 0)
-        //            {
-        //                return 1;
-        //            }
-        //            else
-        //            {
-        //                return 0;
-        //            }
-
-        //        }
-
-        //        else
-        //        {
-        //            if (JToken.Equals(token1, token2))
-        //            {
-        //                return 1;
-        //            }
-        //            else
-        //            {
-        //                return 0;
-        //            }
-
-        //        }
-        //    }
-        //    catch (JsonReaderException)
-        //    {
-        //        throw new ArgumentException("Invalid JSON input.");
-        //    }
-        //}
 
         public static List<JToken> GetJsonListValues(string jsonString, string key)
         {
+            try
+            {
+                JObject jsonObject = JObject.Parse(jsonString);
+                JToken? token = jsonObject.SelectToken(key);
 
-            JObject jsonObject = JObject.Parse(jsonString);
-            JToken? token = jsonObject.SelectToken(key);
+                if (token?.Type == JTokenType.Array)
+                {
+                    //IEnumerable<JToken> jsonArray = ((JArray)token).AsEnumerable();
+                    //var tokens = jsonArray
+                    ////.Distinct()
+                    //.ToList();
 
-            return (token is not null && token.Type == JTokenType.Array) ? [.. token] : [];
-            //if (token != null && token.Type == JTokenType.Array)
-            //{
-            //    return token.ToList();
-            //}
-            //else
-            //{
-            //    List<JToken> x = new List<JToken>();
-            //    var data = jsonObject.SelectToken(key);
-            //    x.Add(data);
-            //    return x;
-            //}
+                    var groupedItems = token
+                    .GroupBy(item => new
+                    {
+                        hsCode = item["hsCode"]?.ToString(),
+                        uom = item["uom"]?.ToString()
+                    })
+                    .Select(group =>
+                    {
+                        return new JObject
+                        {
+                            ["hsCode"] = group.Key.hsCode,
+                            ["uom"] = group.Key.uom,
+                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                        };
+                    })
+                    .Cast<JToken>()
+                    .ToList();
+                    return groupedItems;
+                }
+
+                return (token is not null && token.Type == JTokenType.Array) ? [.. token] : [];
+
+            }
+            catch (Exception)
+            {
+                JArray jsonArray = JArray.Parse(jsonString);
+
+                var tokens = jsonArray
+                .SelectMany(ja => ja.SelectTokens(key))
+                //.Distinct()
+                .ToList();
+
+                if (!IsListOfLists(tokens))
+                {
+
+                    var groupedItemsofLst = tokens
+                    .FirstOrDefault()?
+                    .SelectToken(key)?
+                    .GroupBy(item => new
+                    {
+                        hsCode = item["hsCode"]?.ToString(),
+                        uom = item["uom"]?.ToString()
+                    })
+                    .Select(group =>
+                    {
+                        return new JObject
+                        {
+                            ["hsCode"] = group.Key.hsCode,
+                            ["uom"] = group.Key.uom,
+                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                        };
+                    })
+                    .Cast<JToken>()
+                    .ToList();
+
+                    return groupedItemsofLst ?? [];
+                    //return tokens;
+                }
+
+                var flattenedTokens = FlattenListOfLists(tokens);
+
+                var groupedItems = flattenedTokens
+                    .GroupBy(item => new
+                    {
+                        hsCode = item["hsCode"]?.ToString(),
+                        uom = item["uom"]?.ToString()
+                    })
+                    .Select(group =>
+                    {
+                        return new JObject
+                        {
+                            ["hsCode"] = group.Key.hsCode,
+                            ["uom"] = group.Key.uom,
+                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                        };
+                    })
+                    .Cast<JToken>()
+                    .ToList();
+
+                return groupedItems;
+            }
+        }
+
+        private static IEnumerable<JToken> FlattenListOfLists(IEnumerable<JToken> tokens)
+        {
+            var flatList = new List<JToken>();
+            var queue = new Queue<JToken>(tokens);
+
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+
+                if (current.Type == JTokenType.Array)
+                {
+                    foreach (var child in current.Children())
+                    {
+                        queue.Enqueue(child);
+                    }
+                }
+                else
+                {
+                    flatList.Add(current);
+                }
+            }
+
+            return flatList;
+        }
+
+        private static bool IsListOfLists(IEnumerable<JToken> tokens)
+        {
+            return tokens.All(t => t.Type == JTokenType.Array);
         }
 
 
@@ -547,13 +1035,10 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                 {
                     return null;
                 }
-
-                // Attempt to parse the value as float
                 return float.TryParse(value.ToString(), out var result) ? result : null;
             }
             catch
             {
-                // In case of any exception, return null
                 return null;
             }
         }
