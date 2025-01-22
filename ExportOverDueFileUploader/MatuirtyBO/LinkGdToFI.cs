@@ -605,13 +605,17 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                 List<GdFiLink> Link = new List<GdFiLink>();
                 List<GoodsDeclarationImport> lstgds = CustomRepo.GetGoodsDeclarationImportForLink(AppSettings.TenantId, fileId).ToList();//gd that newly came in 
 
+                List<string?> gdNums = lstgds.Select(g => g.gdNumber)
+                    .Distinct()
+                    .ToList();
+
                 if (lstgds.Count == 0)
                 {
                     Seriloger.LoggerInstance.Information($"No Gds To Sync");
 
                     return "No Gds";
                 }
-                List<FinancialInstrumentImport> lstfis = CustomRepo.GetFinancialInstrumentForImportForLink(AppSettings.TenantId, fis_OpenGds).ToList();
+                List<FinancialInstrumentImport> lstfis = CustomRepo.GetFinancialInstrumentForImportForLink(gdNums ,AppSettings.TenantId, fis_OpenGds).ToList();
                 if (lstfis.Count == 0)
                 {
                     Seriloger.LoggerInstance.Information($"No Fis To Sync");
@@ -621,27 +625,47 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 foreach (var gd in lstgds)
                 {
-                    if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
+                    //if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
+                    //{
+                    List<FinancialInstrumentImport> fiData = [];
+
+                    fiData = lstfis
+                        .Where(x => x.FinInsUniqueNumber != null 
+                            && gd.FinInsUniqueNumber != null 
+                            && x.FinInsUniqueNumber == gd.FinInsUniqueNumber
+                        )
+                        .OrderByDescending(x => x.TransmissionDate)
+                        .ToList();
+
+                    if ((fiData is null || fiData.Count == 0) && gd.ModeOfPayment == "302")
                     {
-                        var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).OrderByDescending(x => x.TransmissionDate).ToList();
-                        if (FiData != null)
-                        {
-                            foreach (var fi in FiData)
-                            {
-                                Link.Add(new GdFiLink()
-                                {
-                                    Type = "Import",
-                                    GdId = gd.Id,
-                                    FiId = fi.Id,
-                                    //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
-                                    CreationTime = DateTime.Now,
-                                    IsDeleted = false,
-                                    RequestStatusId = 12,
-                                    TenantId = AppSettings.TenantId
-                                });
-                            }
-                        }
+                        fiData = lstfis
+                            .Where(x => x.OpenAccountGdNumber != null
+                                && gd.gdNumber != null
+                                && x.OpenAccountGdNumber == gd.gdNumber
+                            )
+                            .OrderByDescending(x => x.TransmissionDate)
+                            .ToList();
                     }
+
+                    //if (FiData != null)
+                    //{
+                    foreach (var fi in fiData ?? [])
+                    {
+                        Link.Add(new GdFiLink()
+                        {
+                            Type = "Import",
+                            GdId = gd.Id,
+                            FiId = fi.Id,
+                            //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
+                            CreationTime = DateTime.Now,
+                            IsDeleted = false,
+                            RequestStatusId = 12,
+                            TenantId = AppSettings.TenantId
+                        });
+                    }
+                    //}
+                //}
                 }
                 CustomRepo.InsertFI_GD_Link(Link);
 
@@ -694,7 +718,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         {
             try
             {
-
                 ExportOverDueContext context = new ExportOverDueContext();
                 List<ComparatorSetting> comparatorSettings = context.ComparatorSettings.ToList();
                 List<GdFiLink> links = new List<GdFiLink>();
@@ -716,23 +739,43 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 foreach (var gd in lstgds)
                 {
-                    if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
+                    //if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
+                    //{
+                    //var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).FirstOrDefault();
+                    List<FinancialInstrumentImport> fiData = [];
+
+                    fiData = lstfis
+                        .Where(x => x.FinInsUniqueNumber != null
+                            && gd.FinInsUniqueNumber != null
+                            && x.FinInsUniqueNumber == gd.FinInsUniqueNumber
+                        )
+                        .OrderByDescending(x => x.TransmissionDate)
+                        .ToList();
+
+                    if ((fiData is null || fiData.Count == 0) && gd.ModeOfPayment == "302")
                     {
-                        var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).FirstOrDefault();
-                        if (FiData != null)
+                        fiData = lstfis
+                            .Where(x => x.OpenAccountGdNumber != null
+                                && gd.gdNumber != null
+                                && x.OpenAccountGdNumber == gd.gdNumber
+                            )
+                            .OrderByDescending(x => x.TransmissionDate)
+                            .ToList();
+                    }
+
+                    foreach (var fi in fiData ?? [])
+                    {
+                        links.Add(new GdFiLink()
                         {
-                            links.Add(new GdFiLink()
-                            {
-                                Type = "Import",
-                                GdId = gd.Id,
-                                FiId = FiData.Id,
-                                //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, FiData.Payload, comparatorSettings, 11),
-                                CreationTime = DateTime.Now,
-                                IsDeleted = false,
-                                RequestStatusId = 11,
-                                TenantId = AppSettings.TenantId
-                            });
-                        }
+                            Type = "Import",
+                            GdId = gd.Id,
+                            FiId = fi.Id,
+                            //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
+                            CreationTime = DateTime.Now,
+                            IsDeleted = false,
+                            RequestStatusId = 12,
+                            TenantId = AppSettings.TenantId
+                        });
                     }
                 }
                 CustomRepo.InsertFI_GD_Link(links);

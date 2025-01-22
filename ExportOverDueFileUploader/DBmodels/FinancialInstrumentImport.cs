@@ -11,6 +11,7 @@ public partial class FinancialInstrumentImport
     public string? MethodId { get; set; }
 
     public string? FinInsUniqueNumber { get; set; }
+    public string? OpenAccountGdNumber { get; set; }
 
     public string? modeOfPayment { get; set; }
 
@@ -44,7 +45,8 @@ public partial class FinancialInstrumentImport
 
     public DateTime? DeletionTime { get; set; }
 
-    public long? BranchSegmentId { get; set; }
+    public long? BranchCodeId { get; set; }
+    public long? SegmentId { get; set; }
 
     public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = [];
 

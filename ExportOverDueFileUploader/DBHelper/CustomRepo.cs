@@ -339,25 +339,51 @@ namespace ExportOverDueFileUploader.DBHelper
                 return null;
             }
         }
-        public static List<FinancialInstrumentImport> GetFinancialInstrumentForImportForLink(long TenantId, NewFiGdFilterModel fis_gds)
+        public static List<FinancialInstrumentImport> GetFinancialInstrumentForImportForLink(List<string?> gdNums, long TenantId, NewFiGdFilterModel fis_gds)
         {
             try
             {
                 var context = new ExportOverDueContext();
-                var rawResult = context.FinancialInstrumentImports.Where(g => g.TenantId == TenantId && g.IsDeleted == false && fis_gds.fis.Contains(g.FinInsUniqueNumber) && g.ResponseCode == "200")
-                                                            .Select(f => new
-                                                            {
-                                                                f.Id,
-                                                                f.IsDeleted,
-                                                                TenantId = f.TenantId,
-                                                                f.Payload,
-                                                                f.FinInsUniqueNumber,
-                                                                f.modeOfPayment,
-                                                                f.FiCertifcationDate
-                                                            })
-                                                            .ToList();
+                List<dynamic> rawResult = [];
+                var rawResult1 = context.FinancialInstrumentImports.Where(g => g.TenantId == TenantId
+                    && g.IsDeleted == false
+                    && g.ResponseCode == "200"
+                    //&& (fis_gds.fis.Contains(g.FinInsUniqueNumber!) || fis_gds.gds.Contains(g.OpenAccountGdNumber)))
+                    && fis_gds.fis.Contains(g.FinInsUniqueNumber!))
+                        .Select(f => new
+                        {
+                            f.Id,
+                            f.IsDeleted,
+                            TenantId = f.TenantId,
+                            f.Payload,
+                            f.FinInsUniqueNumber,
+                            f.modeOfPayment,
+                            f.FiCertifcationDate,
+                            f.OpenAccountGdNumber
+                        })
+                        .ToList();
 
+                var rawResult2 = context.FinancialInstrumentImports.Where(g => g.TenantId == TenantId
+                    && g.IsDeleted == false
+                    //&& g.ResponseCode == "200"
+                    && g.OpenAccountGdNumber != null
+                    && g.modeOfPayment == "302"
+                    && gdNums.Contains(g.OpenAccountGdNumber)
+                    ).Select(f => new
+                    {
+                        f.Id,
+                        f.IsDeleted,
+                        TenantId = f.TenantId,
+                        f.Payload,
+                        f.FinInsUniqueNumber,
+                        f.modeOfPayment,
+                        f.FiCertifcationDate,
+                        f.OpenAccountGdNumber
+                    })
+                    .ToList();
 
+                rawResult.AddRange(rawResult1);
+                rawResult.AddRange(rawResult2);
 
                 List<FinancialInstrumentImport> result = rawResult.Select(f => new FinancialInstrumentImport
                 {
@@ -367,8 +393,9 @@ namespace ExportOverDueFileUploader.DBHelper
                     FinInsUniqueNumber = f.FinInsUniqueNumber,
                     modeOfPayment = f.modeOfPayment,
                     FiCertifcationDate = f.FiCertifcationDate,
-                    Payload = f.Payload
-                }).ToList();
+                    Payload = f.Payload,
+                    OpenAccountGdNumber = f.OpenAccountGdNumber
+                }).Distinct().ToList();
                 return result;
 
             }
@@ -388,7 +415,9 @@ namespace ExportOverDueFileUploader.DBHelper
                 var result = new List<GoodsDeclarationImport>();
                 var rawResult = context.GoodsDeclarationImports
                         .Where(g => g.TenantId == TenantId && g.IsDeleted == false
-                               && fis_gds.fis.Contains(g.FinInsUniqueNumber) && g.gdStatus == "05")
+                               && g.gdStatus == "05" 
+                               && ((g.FinInsUniqueNumber != null && fis_gds.fis.Contains(g.FinInsUniqueNumber)) 
+                                    || (g.gdNumber != null && fis_gds.gds.Contains(g.gdNumber))))
                        .Select(g => new
                        {
                            g.GDDate,
@@ -436,19 +465,21 @@ namespace ExportOverDueFileUploader.DBHelper
                                                                 TenantId = f.TenantId,
                                                                 f.FinInsUniqueNumber,
                                                                 f.modeOfPayment,
-                                                                f.Payload
+                                                                f.Payload,
+                                                                f.OpenAccountGdNumber
                                                             })
                                                             .ToList();
 
-                List<FinancialInstrumentImport> result = rawResult.Select(f => new FinancialInstrumentImport
+                List <FinancialInstrumentImport> result = rawResult.Select(f => new FinancialInstrumentImport
                 {
                     Id = f.Id,
                     IsDeleted = f.IsDeleted,
                     TenantId = f.TenantId,
                     FinInsUniqueNumber = f.FinInsUniqueNumber,
                     modeOfPayment = f.modeOfPayment,
-                    Payload = f.Payload
-                }).ToList();
+                    Payload = f.Payload,
+                    OpenAccountGdNumber = f.OpenAccountGdNumber
+                }).Distinct().ToList();
                 return result;
 
             }

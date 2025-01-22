@@ -1,5 +1,4 @@
-﻿using System.Text.Json.Nodes;
-using ExportOverDueFileUploader.DBmodels;
+﻿using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.Modles;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -214,278 +213,6 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
             }
         }
 
-        //private static List<ComparisonResult> ProcessItemInformation(string gdJson, string fiJson, ComparatorSetting setting, long ReqStatusId, string BaseFeild = "FI", long? fId = null, long? gId = null)
-        //{
-
-        //    try
-        //    {
-        //        (Value1Json, Value2Json) = (BaseFeild == "GD") ? (gdJson, fiJson) : (BaseFeild == "FI") ? (fiJson, gdJson) : ("", "");
-        //        string TrailingFeild = (BaseFeild == "GD") ? "FI" : "GD";
-        //        List<ComparisonResult> result = [];
-
-        //        if (setting.Entity1Key is null || setting.Entity2Key is null)
-        //        {
-        //            throw new Exception();
-        //        }
-
-        //        int count = 1;
-        //        List<JToken> Tokens1 = GetJsonListValues(Value1Json, setting.Entity1Key[..setting.Entity1Key.IndexOf("[i]")]);
-        //        List<JToken> Tokens2 = GetJsonListValues(Value2Json, setting.Entity2Key[..setting.Entity2Key.IndexOf("[i]")]);
-
-
-        //        int baseCounts = (BaseFeild == "GD") ? Tokens2.Count : Tokens1.Count;
-        //        int tralingCounts = (BaseFeild == "GD") ? Tokens1.Count : Tokens2.Count;
-
-        //        for (int i = 0; i < baseCounts; i++)
-        //        {
-        //            List<ComparisonResult> ComparisonResult = [];
-        //            List<priorityRecord> priorityList = [];
-
-        //            for (int j = 0; j < tralingCounts; j++)
-        //            {
-        //                priorityRecord record = new();
-        //                bool isEntityMatched, isUomMatched;
-        //                int compareResult = 0;
-        //                values1 = Tokens1[i]["hsCode"];
-        //                values2 = Tokens2[j]["hsCode"];
-
-        //                record.startIndex = ComparisonResult.Count;
-
-        //                var Comparision = CompareJsonTokens(values1, values2, setting.CalculateVariance);
-        //                compareResult = Comparision.Result;
-        //                if (compareResult == 1)
-        //                {
-        //                    //HsCode Match
-
-        //                    ComparisonResult.Add(new ComparisonResult
-        //                    {
-        //                        ComparisonType = $"{setting.ValidationType} Comparison > FI-{i + 1}:GD-{j + 1}",
-        //                        Entity1Key = $"{setting.Entity1Key}",
-        //                        Entity2Key = $"{setting.Entity2Key}",
-        //                        Entity1Value = values1?.ToString(),
-        //                        Entity2Value = values2?.ToString(),
-        //                        ComparisonName = setting.ValidationType,
-        //                        Result = Comparision.Result,
-        //                        Variance = Comparision.Variance,
-        //                        RequestStatusId = ReqStatusId,
-        //                        TenantId = AppSettings.TenantId,
-        //                        FiId = fId,
-        //                        GdFiLinkId = gId
-        //                    });
-        //                    isEntityMatched = true;
-
-        //                    if (isEntityMatched)
-        //                    {
-        //                        values1 = Tokens1[i]["uom"];
-        //                        values2 = Tokens2[j]["uom"];
-
-        //                        Comparision = CompareJsonTokens(values1, values2, true);
-        //                        compareResult = Comparision.Result;
-        //                        if (compareResult == 1)
-        //                        {
-        //                            //UOM Matched
-        //                            ComparisonResult.Add(new ComparisonResult
-        //                            {
-        //                                ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
-        //                                Entity1Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),
-        //                                Entity2Key = setting.Entity2Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),
-        //                                Entity1Value = values1?.ToString(),
-        //                                Entity2Value = values2?.ToString(),
-        //                                ComparisonName = "UOM",
-        //                                Result = Comparision.Result,
-        //                                Variance = Comparision.Variance,
-        //                                RequestStatusId = ReqStatusId,
-        //                                TenantId = AppSettings.TenantId,
-        //                                FiId = fId,
-        //                                GdFiLinkId = gId
-        //                            });
-        //                            isUomMatched = true;
-
-        //                            if (isUomMatched)
-        //                            {
-        //                                values1 = Tokens1[i]["quantity"];
-        //                                values2 = Tokens2[j]["quantity"];
-        //                                Comparision = CompareJsonTokens(values1, values2, true);
-        //                                compareResult = Comparision.Result;
-        //                                if (compareResult == 1)
-        //                                {
-        //                                    //Quantity Matched
-
-        //                                    ComparisonResult.Add(new ComparisonResult
-        //                                    {
-        //                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
-        //                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
-        //                                        Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),
-        //                                        Entity1Value = values1?.ToString(),
-        //                                        Entity2Value = values2?.ToString(),
-        //                                        ComparisonName = "Quantity",
-        //                                        Result = Comparision.Result,
-        //                                        Variance = Comparision.Variance,
-        //                                        RequestStatusId = ReqStatusId,
-        //                                        TenantId = AppSettings.TenantId,
-        //                                        FiId = fId,
-        //                                        GdFiLinkId = gId
-        //                                    });
-
-        //                                    //STATUS CODE 3
-        //                                    //PRIORITY CODE 3
-        //                                    record.priority = 3;
-        //                                    record.endIndex = ComparisonResult.Count();
-
-        //                                }
-        //                                else
-        //                                {
-        //                                    Comparision = CompareJsonTokens(values1, values2, true);
-        //                                    compareResult = Comparision.Result;
-        //                                    //Quantity is Not Matched
-
-        //                                    ComparisonResult.Add(new ComparisonResult
-        //                                    {
-        //                                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
-        //                                        ComparisonName = "Quantity",
-        //                                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
-        //                                        Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),
-        //                                        Entity1Value = values1?.ToString(),
-        //                                        Entity2Value = values2?.ToString(),
-        //                                        Result = Comparision.Result,
-        //                                        Variance = Comparision.Variance,
-        //                                        RequestStatusId = ReqStatusId,
-        //                                        TenantId = AppSettings.TenantId,
-        //                                        FiId = fId,
-        //                                        GdFiLinkId = gId
-        //                                    });
-
-        //                                    //PRIORITY CODE 2
-        //                                    record.priority = 2;
-        //                                    record.endIndex = ComparisonResult.Count;
-        //                                }
-        //                            }
-        //                        }
-        //                        else
-        //                        {
-        //                            // UOM Not Matched
-
-        //                            ComparisonResult.Add(new ComparisonResult
-        //                            {
-        //                                ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
-        //                                Entity2Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),
-        //                                Entity1Key = setting.Entity2Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),
-        //                                Entity1Value = values1?.ToString(),
-        //                                Entity2Value = values2?.ToString(),
-        //                                ComparisonName = "UOM",
-        //                                Result = Comparision.Result,
-        //                                Variance = Comparision.Variance,
-        //                                RequestStatusId = ReqStatusId,
-        //                                TenantId = AppSettings.TenantId,
-        //                                FiId = fId,
-        //                                GdFiLinkId = gId
-        //                            });
-        //                            ComparisonResult.Add(new ComparisonResult
-        //                            {
-        //                                ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
-        //                                Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
-        //                                Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),
-        //                                Entity1Value = Tokens1[i]["quantity"]?.ToString(),
-        //                                Entity2Value = Tokens2[j]["quantity"]?.ToString(),
-        //                                ComparisonName = "Quantity",
-        //                                Result = CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], setting.CalculateVariance).Result,
-        //                                Variance = CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], true).Variance,
-        //                                RequestStatusId = ReqStatusId,
-        //                                TenantId = AppSettings.TenantId,
-        //                                FiId = fId,
-        //                                GdFiLinkId = gId
-        //                            });
-
-        //                            //PRIORITY CODE 1
-        //                            record.priority = 1;
-        //                            record.endIndex = ComparisonResult.Count;
-        //                        }
-        //                    }
-        //                }
-        //                else
-        //                {
-        //                    //HsCode Not Matched
-
-        //                    ComparisonResult.Add(new ComparisonResult
-        //                    {
-        //                        ComparisonType = $"{setting.ValidationType} Comparison > FI-{i + 1}:GD-{j + 1}",
-        //                        Entity1Key = $"{setting.Entity1Key}",
-        //                        Entity2Key = $"{setting.Entity2Key}",
-        //                        Entity1Value = values1?.ToString(),
-        //                        Entity2Value = i < tralingCounts ? Tokens2[i]["hsCode"]?.ToString() : $"N/A",
-        //                        ComparisonName = setting.ValidationType,
-        //                        Result = 0,
-        //                        RequestStatusId = ReqStatusId,
-        //                        TenantId = AppSettings.TenantId,
-        //                        FiId = fId,
-        //                        GdFiLinkId = gId
-        //                    });
-
-        //                    ComparisonResult.Add(new ComparisonResult
-        //                    {
-        //                        ComparisonType = $"UOM Comparison > FI-{i + 1}:GD-{j + 1}",
-        //                        Entity1Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{i}]"),                //Data.iteminfo[i].uom
-        //                        Entity2Key = setting.Entity1Key.Replace("hsCode", "uom").Replace("[i]", $"[{j}]"),                //Data.iteminfo[i].uom
-        //                        Entity1Value = Tokens1[i]["uom"] != null ? Tokens1[i]["uom"]?.ToString() : "uom",
-        //                        Entity2Value = i < tralingCounts ? Tokens2[j]["uom"]?.ToString() : $"N/A",
-        //                        ComparisonName = "UOM",
-        //                        Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["uom"], Tokens2[j]["uom"], setting.CalculateVariance).Result : 2,
-        //                        Variance = CompareJsonTokens(Tokens1[i]["uom"], Tokens2[j]["uom"], true).Variance,
-        //                        RequestStatusId = ReqStatusId,
-        //                        TenantId = AppSettings.TenantId,
-        //                        FiId = fId,
-        //                        GdFiLinkId = gId
-        //                    });
-
-        //                    ComparisonResult.Add(new ComparisonResult
-        //                    {
-        //                        ComparisonType = $"Quantity Comparison > FI-{i + 1}:GD-{j + 1}",
-        //                        Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{i}]"),           //Data.iteminfo[i].quantity
-        //                        Entity2Key = setting.Entity1Key.Replace("hsCode", "quantity").Replace("[i]", $"[{j}]"),           //Data.iteminfo[i].quantity
-        //                        Entity1Value = Tokens1[i]["quantity"] != null ? Tokens1[i]["quantity"]?.ToString() : "quantity",
-        //                        Entity2Value = j < tralingCounts ? Tokens2[j]["quantity"]?.ToString() : $"N/A",
-        //                        Result = i < tralingCounts ? CompareJsonTokens(Tokens1[i]["quantity"], Tokens2[j]["quantity"], setting.CalculateVariance).Result : 2,
-        //                        Variance = CompareJsonTokens((Tokens1[i]["quantity"]), (Tokens2[j]["quantity"]), true).Variance,
-        //                        RequestStatusId = ReqStatusId,
-        //                        ComparisonName = "Quantity",
-        //                        TenantId = AppSettings.TenantId,
-        //                        FiId = fId,
-        //                        GdFiLinkId = gId
-        //                    });
-
-        //                    //PRIORITY CODE 0
-        //                    record.priority = 0;
-        //                    record.endIndex = ComparisonResult.Count;
-        //                }
-
-        //                priorityList.Add(record);
-        //                count++;
-        //            }
-
-        //            //SELECTING ONLY HIGHEST PRIORITY ITEM ONLY
-        //            var highestPriorityItem = priorityList.MaxBy(x => x.priority);
-        //            if (highestPriorityItem != null)
-        //            {
-        //                var highestPriorityRecord = ComparisonResult.GetRange(highestPriorityItem.startIndex, highestPriorityItem.endIndex - highestPriorityItem.startIndex);
-        //                foreach (var item in highestPriorityRecord)
-        //                {
-        //                    if (highestPriorityRecord[0].Result == 0)
-        //                    {
-
-        //                    }
-        //                    result.Add(item);
-        //                }
-        //            }
-        //        }
-        //        return result;
-        //    }
-        //    catch (Exception)
-        //    {
-        //        return [];
-        //    }
-        //}
-
-
         private static List<ComparisonResult> ProcessItemInformation(string gdJson, string fiJson, ComparatorSetting setting, long ReqStatusId, string BaseFeild = "FI", long? fId = null, long? gId = null)
         {
             try
@@ -557,65 +284,43 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                         var uom2 = token2["uom"]?.ToString();
 
                         var uomComparison = CompareJsonTokens(uom1, uom2, setting.CalculateVariance);
-                        //if (uomComparison.Result == 1)
-                        //{
                             // uom matches
-                            result.Add(new ComparisonResult
-                            {
-                                ComparisonType = $"UOM Comparison > FI",
-                                Entity1Key = setting.Entity1Key.Replace("hsCode", "uom"),
-                                Entity2Key = setting.Entity2Key.Replace("hsCode", "uom"),
-                                Entity1Value = uom1,
-                                Entity2Value = uom2,
-                                ComparisonName = "UOM",
-                                Result = uomComparison.Result,
-                                Variance = uomComparison.Variance,
-                                RequestStatusId = ReqStatusId,
-                                TenantId = AppSettings.TenantId,
-                                FiId = fId,
-                                GdFiLinkId = gId
-                            });
+                        result.Add(new ComparisonResult
+                        {
+                            ComparisonType = $"UOM Comparison > FI",
+                            Entity1Key = setting.Entity1Key.Replace("hsCode", "uom"),
+                            Entity2Key = setting.Entity2Key.Replace("hsCode", "uom"),
+                            Entity1Value = uom1,
+                            Entity2Value = uom2,
+                            ComparisonName = "UOM",
+                            Result = uomComparison.Result,
+                            Variance = uomComparison.Variance,
+                            RequestStatusId = ReqStatusId,
+                            TenantId = AppSettings.TenantId,
+                            FiId = fId,
+                            GdFiLinkId = gId
+                        });
 
-                            // Perform additional comparisons for quantity
-                            var quantity1 = token1["quantity"];
-                            var quantity2 = token2["quantity"];
-                            var quantityComparison = CompareJsonTokens(quantity1, quantity2, setting.CalculateVariance);
+                        // Perform additional comparisons for quantity
+                        var quantity1 = token1["quantity"];
+                        var quantity2 = token2["quantity"];
+                        var quantityComparison = CompareJsonTokens(quantity1, quantity2, setting.CalculateVariance);
 
-                            result.Add(new ComparisonResult
-                            {
-                                ComparisonType = $"Quantity Comparison > FI",
-                                Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity"),
-                                Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity"),
-                                Entity1Value = quantity1?.ToString(),
-                                Entity2Value = quantity2?.ToString(),
-                                ComparisonName = "Quantity",
-                                Result = quantityComparison.Result,
-                                Variance = quantityComparison.Variance,
-                                RequestStatusId = ReqStatusId,
-                                TenantId = AppSettings.TenantId,
-                                FiId = fId,
-                                GdFiLinkId = gId
-                            });
-                        //}
-                        //else
-                        //{
-                        //    // uom does not match
-                        //    result.Add(new ComparisonResult
-                        //    {
-                        //        ComparisonType = $"UOM Comparison > FI",
-                        //        Entity1Key = setting.Entity1Key.Replace("hsCode", "uom"),
-                        //        Entity2Key = setting.Entity2Key.Replace("hsCode", "uom"),
-                        //        Entity1Value = uom1,
-                        //        Entity2Value = uom2,
-                        //        ComparisonName = "UOM",
-                        //        Result = uomComparison.Result,
-                        //        Variance = uomComparison.Variance,
-                        //        RequestStatusId = ReqStatusId,
-                        //        TenantId = AppSettings.TenantId,
-                        //        FiId = fId,
-                        //        GdFiLinkId = gId
-                        //    });
-                        //}
+                        result.Add(new ComparisonResult
+                        {
+                            ComparisonType = $"Quantity Comparison > FI",
+                            Entity1Key = setting.Entity1Key.Replace("hsCode", "quantity"),
+                            Entity2Key = setting.Entity2Key.Replace("hsCode", "quantity"),
+                            Entity1Value = quantity1?.ToString(),
+                            Entity2Value = quantity2?.ToString(),
+                            ComparisonName = "Quantity",
+                            Result = quantityComparison.Result,
+                            Variance = quantityComparison.Variance,
+                            RequestStatusId = ReqStatusId,
+                            TenantId = AppSettings.TenantId,
+                            FiId = fId,
+                            GdFiLinkId = gId
+                        });
                     }
                 }
 
@@ -627,7 +332,6 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
                 return [];
             }
         }
-
 
         private static List<ComparisonResult> ProcessItemCounts(string gdJson, string fiJson, ComparatorSetting setting, long ReqStatusId, string BaseFeild = "FI", long? fId = null, long? gId = null)
         {
@@ -755,12 +459,6 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
                 if (token?.Type == JTokenType.Array)
                 {
-                    //IEnumerable<JToken> jsonArray = ((JArray)token).AsEnumerable();
-                    //var tokens = jsonArray
-                    //.SelectMany(ja => ja.SelectTokens(key))
-                    ////.Distinct()
-                    //.ToList();
-
                     var groupedItems = token
                     .GroupBy(item => new
                     {
@@ -871,11 +569,6 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic
 
                 if (token?.Type == JTokenType.Array)
                 {
-                    //IEnumerable<JToken> jsonArray = ((JArray)token).AsEnumerable();
-                    //var tokens = jsonArray
-                    ////.Distinct()
-                    //.ToList();
-
                     var groupedItems = token
                     .GroupBy(item => new
                     {

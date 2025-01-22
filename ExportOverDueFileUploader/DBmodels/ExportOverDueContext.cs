@@ -78,7 +78,7 @@ public partial class ExportOverDueContext : DbContext
         {
             entity.ToTable("FinancialInstrumentImport");
 
-            entity.HasIndex(e => e.BranchSegmentId, "IX_FinancialInstrumentImport_BranchSegmentId");
+            //entity.HasIndex(e => e.BranchSegmentId, "IX_FinancialInstrumentImport_BranchSegmentId");
         });
 
         modelBuilder.Entity<GdFiLink>(entity =>

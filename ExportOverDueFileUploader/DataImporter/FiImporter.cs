@@ -30,7 +30,8 @@ namespace ExportOverDueFileUploader.DataImporter
             "ImporterIban",
             "FiCertifcationDate",
             "ImporterNtn",
-            "ImporterName"
+            "ImporterName",
+            "OpenAccountGdNumber"
         };
 
         //public static List<string> CobFiColoums = new List<string>
@@ -72,7 +73,11 @@ namespace ExportOverDueFileUploader.DataImporter
                     _row["ImporterNtn"] = payload.importerNtn;
                     _row["ImporterIban"] = payload.importerNtn;
                     _row["ImporterName"] = payload.importerName;
-                    //_row["openAccountGdNumber"] = payload?.openAccountData?.gdNumber;
+
+                    if (!string.IsNullOrEmpty(payload?.openAccountData?.gdNumber))
+                    {
+                        _row["OpenAccountGdNumber"] = payload?.openAccountData?.gdNumber;
+                    }
 
                     if (!payload.finInsUniqueNumber.IsNullOrEmpty())
                     {

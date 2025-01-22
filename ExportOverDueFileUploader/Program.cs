@@ -27,9 +27,9 @@ internal class Program
             ExportOverDueContext context = new ExportOverDueContext();
             var settings = context.ComparatorSettings.ToList();
             Uploader x = new Uploader();
-            //x.Execution();
+            x.Execution();
 
-             x.Test();
+            //x.Test();
 
         }
         catch (Exception ex)

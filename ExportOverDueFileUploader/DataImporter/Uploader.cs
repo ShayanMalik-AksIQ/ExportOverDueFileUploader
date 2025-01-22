@@ -1,5 +1,6 @@
 ﻿using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.MatuirtyBO;
+using ExportOverDueFileUploader.Modles;
 using ExportOverDueFileUploader.ValidateIqBizLogic;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Data;
+using System.Diagnostics;
 
 namespace ExportOverDueFileUploader.DataImporter
 {
@@ -27,19 +29,57 @@ namespace ExportOverDueFileUploader.DataImporter
 
         public void Test()
         {
-            ExportOverDueContext context = new ExportOverDueContext();
-            var settings = context.ComparatorSettings.ToList();
-            var figdLink = context.GdFiLinks
-                .Include(fg => fg.Fi)
-                .Include(fg => fg.Gd)
-                .FirstOrDefault();
+            ExportOverDueContext context = new();
+            var settings = context.ComparatorSettings
+                .ToList();
 
-            var gd = figdLink?.Gd;
-            var fi = figdLink?.Fi;
+            //var figdLink = context.FinancialInstrumentImports
+            //    .Include(figd => figd.GdFiLinks)
+            //        .ThenInclude(fi => fi!.Gd)
+            //    .Where(fi => fi.GdFiLinks.Count(link => link.Gd != null) > 1)
+            //    .Skip(1)
+            //    .Take(1)
+            //    .ToList();
 
-            var results = Compression.CompareGdAndFi(gd?.Payload ?? "", fi?.Payload ?? "", settings, 3);
 
-            results.ForEach(result => Console.WriteLine(result));
+            var figdLink = context.FinancialInstrumentImports
+                .Include(figd => figd.GdFiLinks)
+                    .ThenInclude(fi => fi!.Gd)
+                //.Where(fi => fi.GdFiLinks.All(gd => gd.Gd!.Payload != null))
+                //.AsEnumerable() // Materialize data
+                //.Where(fi => fi.GdFiLinks
+                //    .Count(link => link.Gd != null && System.Text.Json.JsonDocument.Parse(link.Gd.Payload!)
+                //        .RootElement.GetProperty("data")
+                //        .GetProperty("itemInformation")
+                //        .EnumerateArray()
+                //        .Count() > 4) > 1)
+                //.Skip(2)
+                //.Take(1)
+                .Where(fi => fi.Id == 279192)
+                .ToList();
+
+            List<FiGds> fiGds = figdLink.Select(figdLink => new FiGds
+            {
+                FiPayload = figdLink.Payload ?? string.Empty,
+                FiId = figdLink.Id,
+                Gds = figdLink.GdFiLinks.Select(gds => new Gd{GdPayload =  gds.Gd!.Payload ?? string.Empty, GdFiId = gds.Id}).ToList() ?? []
+            }).ToList();
+
+            Stopwatch sw = new();
+            sw.Start();
+            var result = Compression.CompareGdAndFi(fiGds, settings, 3);
+            sw.Stop();
+
+            Console.WriteLine($"----------------{sw.ElapsedMilliseconds} ms -------------------\n\n");
+            //foreach (KeyValuePair<string, List<ComparisonResult>> kvPair in result)
+            //{
+            //    Console.WriteLine($"---------------{kvPair.Key}-----------------\n\n");
+            //    foreach (var item in kvPair.Value)
+            //    {
+            //        Console.WriteLine(item.ToString());
+            //    }
+            //}
+
         }
 
         public void Execution()
@@ -367,19 +407,17 @@ namespace ExportOverDueFileUploader.DataImporter
                 int batchSize = AppSettings.BatchSize; // Set your desired batch size df
                 int totalRows = dt.Rows.Count;
 
-                using (var sqlbulk = new SqlBulkCopy(connectionString))
+                using var sqlbulk = new SqlBulkCopy(connectionString);
+                sqlbulk.DestinationTableName = entityName;
+                for (int i = 0; i < totalRows; i += batchSize)
                 {
-                    sqlbulk.DestinationTableName = entityName;
-                    for (int i = 0; i < totalRows; i += batchSize)
+                    var currentBatch = dt.AsEnumerable().Skip(i).Take(batchSize).CopyToDataTable();
+                    sqlbulk.ColumnMappings.Clear();
+                    foreach (DataColumn _col in currentBatch.Columns)
                     {
-                        var currentBatch = dt.AsEnumerable().Skip(i).Take(batchSize).CopyToDataTable();
-                        sqlbulk.ColumnMappings.Clear();
-                        foreach (DataColumn _col in currentBatch.Columns)
-                        {
-                            sqlbulk.ColumnMappings.Add(_col.ColumnName, _col.ColumnName);
-                        }
-                        sqlbulk.WriteToServer(currentBatch);
+                        sqlbulk.ColumnMappings.Add(_col.ColumnName, _col.ColumnName);
                     }
+                    sqlbulk.WriteToServer(currentBatch);
                 }
             }
             catch (Exception ex)
@@ -461,21 +499,32 @@ namespace ExportOverDueFileUploader.DataImporter
                 foreach (DataRow row in dataTable.Rows)
                 {
 
-                    string fi = row["FinInsUniqueNumber"].ToString();
+                    string? fi = row["FinInsUniqueNumber"].ToString();
+                    string? gd = row["OpenAccountGdNumber"].ToString();
 
 
-                    if (fi != "")
+                    if (!string.IsNullOrEmpty(fi))
                     {
                         fis.Add(fi);
                     }
+                    if (!string.IsNullOrEmpty(gd)) { 
+                        gdNumberList.Add(gd);
+                    }
 
                 }
+
+
+
+
+
                 return new NewFiGdFilterModel
                 {
                     fis = fis.Where(x => x != null && x != "")
                              .Distinct()
                              .ToList(),
                     gds = gdNumberList
+                        .Distinct()
+                        .ToList()
                 };
             }
             catch
@@ -540,5 +589,7 @@ namespace ExportOverDueFileUploader.DataImporter
             writer.WriteValue(value);
         }
     }
+
+
 
 }
