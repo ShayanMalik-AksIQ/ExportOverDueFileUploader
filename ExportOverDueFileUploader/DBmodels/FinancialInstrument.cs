@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
@@ -91,5 +92,5 @@ public partial class FinancialInstrument
 
     public virtual ICollection<GD_FI_Link> GD_FI_Links { get; set; } = new List<GD_FI_Link>();
 
-
+    public virtual ICollection<AggregiatedResultExport>? AggregiatedResultExports { get; set; }
 }

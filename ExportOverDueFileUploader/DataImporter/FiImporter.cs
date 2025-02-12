@@ -64,8 +64,8 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 var x = _row["PAYLOAD"]?.ToString();
                 var InnerObj = JsonConvert.DeserializeObject<FIPayload>(_row["PAYLOAD"]?.ToString()).Data.ToString();
-
                 FiImportPayLoadJson payload = JsonConvert.DeserializeObject<FiImportPayLoadJson>(InnerObj);
+
                 if (payload != null)
                 {
                     _row["FinInsUniqueNumber"] = payload.finInsUniqueNumber;
@@ -104,10 +104,6 @@ namespace ExportOverDueFileUploader.DataImporter
 
 
                 }
-
-
-
-
             }
             catch
             {
@@ -145,8 +141,11 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             try
             {
-                var x = _row["PAYLOAD"]?.ToString();
-                FiPayLoadJson payload = JsonConvert.DeserializeObject<FiPayLoadJson>(_row["PAYLOAD"]?.ToString());
+
+                var InnerObj = JsonConvert.DeserializeObject<FIPayload>(_row["PAYLOAD"]?.ToString()).Data.ToString();
+
+                FiPayLoadJson payload = JsonConvert.DeserializeObject<FiPayLoadJson>(InnerObj);
+
                 if (payload != null)
                 {
                     _row["paymentInformation"] = payload?.paymentInformation != null ? JsonConvert.SerializeObject(payload?.paymentInformation) : null;

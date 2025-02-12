@@ -1,5 +1,6 @@
 ﻿using ExportOverDueFileUploader.DataImporter;
 using ExportOverDueFileUploader.DBmodels;
+using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Runtime.CompilerServices;
@@ -27,16 +28,11 @@ namespace ExportOverDueFileUploader.DBHelper
     }
     public static class CustomRepo
     {
-        public static void InsertFI_GD_Link(List<GD_FI_Link> v20fields)
+        public static void InsertFI_GD_Link(List<GD_FI_Link> links)
         {
-            foreach (var field in v20fields)
-            {
-                field.TenantId = AppSettings.TenantId;
-                field.CreationTime = DateTime.Now;
-            }
             var context = new ExportOverDueContext();
 
-            //context.GD_FI_Links.AddRange(v20fields);
+            context.Gd_Fi_Link.AddRange(links);
             context.SaveChanges();
         }
         public static void RemoveLinkFI_GD_Link(List<long> openAccountGdId)
@@ -277,23 +273,37 @@ namespace ExportOverDueFileUploader.DBHelper
 
         public static void InsertFI_GD_Link(List<GdFiLink> Links)
         {
-            foreach (var field in Links)
-            {
-                field.TenantId = AppSettings.TenantId;
-                field.CreationTime = DateTime.Now;
-
-            }
             var context = new ExportOverDueContext();
 
             context.GdFiLinks.AddRange(Links);
             context.SaveChanges();
         }
 
-        public static void InsertFI_GD_ComparisonResult(List<ComparisonResult> results)
+        public static void InsertFI_GD_ComparisonResult(List<ValidateIqBizLogic.Comparison_V2.ComparisonResult> results)
         {
             var context = new ExportOverDueContext();
 
-            context.ComparisonResults.AddRange(results);
+            var aggImport = results.Where(x => x is AggregiatedResultImport)
+                      .Select(x => (AggregiatedResultImport)x)
+                      .ToList();
+
+            var compImport = results.Where(x => x is ComparisonResultImport)
+                                   .Select(x => (ComparisonResultImport)x)
+                                   .ToList();
+
+            var aggExport = results.Where(x => x is AggregiatedResultExport)
+                      .Select(x => (AggregiatedResultExport)x)
+                      .ToList();
+
+            var compExport = results.Where(x => x is ComparisonResultExport)
+                                   .Select(x => (ComparisonResultExport)x)
+                                   .ToList();
+
+            context.AggregiatedResultImports.AddRange(aggImport);
+            context.ComparisonResultImports.AddRange(compImport);
+            context.AggregiatedResultExports.AddRange(aggExport);
+            context.ComparisonResultExports.AddRange(compExport);
+
             context.SaveChanges();
         }
 
@@ -329,6 +339,47 @@ namespace ExportOverDueFileUploader.DBHelper
                     gdNumber = g.gdNumber,
                     GDDate = g.GDDate,
                     Payload = g.Payload,
+
+                }).ToList();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error Fetching GoodsDeclaration  Data", ex.Message);
+                return null;
+            }
+        }
+        public static List<GoodsDeclaration> GetGoodsDeclarationForLink(long TenantId, long fileId)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                var result = new List<GoodsDeclaration>();
+                var rawResult = context.GoodsDeclaration
+                        .Where(g => g.TenantId == TenantId && g.IsDeleted == false
+                               && g.FileAuditId == fileId && g.gdStatus == "05")
+                        .Select(g => new
+                        {
+                            g.GDDate,
+                            g.Id,
+                            g.IsDeleted,
+                            TenantId = g.TenantId,
+                            g.finInsUniqueNumber,
+                            g.modeOfPayment,
+                            g.PAYLOAD,
+                            g.gdNumber,
+                        })
+                        .ToList();
+                result = rawResult.Select(g => new GoodsDeclaration
+                {
+                    Id = g.Id,
+                    IsDeleted = g.IsDeleted,
+                    TenantId = g.TenantId,
+                    finInsUniqueNumber = g.finInsUniqueNumber,
+                    modeOfPayment = g.modeOfPayment,
+                    gdNumber = g.gdNumber,
+                    GDDate = g.GDDate,
+                    PAYLOAD = g.PAYLOAD,
 
                 }).ToList();
                 return result;
@@ -405,6 +456,72 @@ namespace ExportOverDueFileUploader.DBHelper
                 return null;
             }
         }
+        public static List<FinancialInstrument> GetFinancialInstrumentForExportForLink(List<string?> gdNums, long TenantId, NewFiGdFilterModel fis_gds)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                List<dynamic> rawResult = [];
+                var rawResult1 = context.FinancialInstrument.Where(g => g.TenantId == TenantId
+                    && g.IsDeleted == false
+                    && g.RESPONSE_CODE == "200"
+                    //&& (fis_gds.fis.Contains(g.FinInsUniqueNumber!) || fis_gds.gds.Contains(g.OpenAccountGdNumber)))
+                    && fis_gds.fis.Contains(g.finInsUniqueNumber!))
+                        .Select(f => new
+                        {
+                            f.Id,
+                            f.IsDeleted,
+                            f.TenantId,
+                            f.PAYLOAD,
+                            f.finInsUniqueNumber,
+                            f.modeOfPayment,
+                            f.FiCertifcationdate,
+                            f.openAccountGdNumber
+                        })
+                        .ToList();
+
+                var rawResult2 = context.FinancialInstrument.Where(g => g.TenantId == TenantId
+                    && g.IsDeleted == false
+                    //&& g.ResponseCode == "200"
+                    && g.openAccountGdNumber != null
+                    //&& g.modeOfPayment == "302"
+                    && gdNums.Contains(g.openAccountGdNumber)
+                    ).Select(f => new
+                    {
+                        f.Id,
+                        f.IsDeleted,
+                        f.TenantId,
+                        f.PAYLOAD,
+                        f.finInsUniqueNumber,
+                        f.modeOfPayment,
+                        f.FiCertifcationdate,
+                        f.openAccountGdNumber
+                    })
+                    .ToList();
+
+                rawResult.AddRange(rawResult1);
+                rawResult.AddRange(rawResult2);
+
+                List<FinancialInstrument> result = rawResult.Select(f => new FinancialInstrument
+                {
+                    Id = f.Id,
+                    IsDeleted = f.IsDeleted,
+                    TenantId = f.TenantId,
+                    finInsUniqueNumber = f.finInsUniqueNumber,
+                    modeOfPayment = f.modeOfPayment,
+                    FiCertifcationdate = f.FiCertifcationdate,
+                    PAYLOAD = f.PAYLOAD,
+                    openAccountGdNumber = f.openAccountGdNumber
+                }).Distinct().ToList();
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error Fetching FinancialInstrument Data", ex.Message);
+                return null;
+            }
+        }
         #endregion  Sync newGD
 
         public static List<GoodsDeclarationImport> GetGoodsDeclarationImportForLink(NewFiGdFilterModel fis_gds, long TenantId)
@@ -417,7 +534,7 @@ namespace ExportOverDueFileUploader.DBHelper
                         .Where(g => g.TenantId == TenantId && g.IsDeleted == false
                                && g.gdStatus == "05" 
                                && ((g.FinInsUniqueNumber != null && fis_gds.fis.Contains(g.FinInsUniqueNumber)) 
-                                    || (g.gdNumber != null && fis_gds.gds.Contains(g.gdNumber))))
+                                    || (g.gdNumber != null && fis_gds.gds != null && fis_gds.gds.Contains(g.gdNumber))))
                        .Select(g => new
                        {
                            g.GDDate,
@@ -440,6 +557,50 @@ namespace ExportOverDueFileUploader.DBHelper
                     gdNumber = g.gdNumber,
                     GDDate = g.GDDate,
                     Payload = g.Payload
+
+                }).ToList();
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error Fetching GoodsDeclaration  Data", ex.Message);
+                return null;
+            }
+        }
+        public static List<GoodsDeclaration> GetGoodsDeclarationForLink(NewFiGdFilterModel fis_gds, long TenantId)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                var result = new List<GoodsDeclaration>();
+                var rawResult = context.GoodsDeclaration
+                        .Where(g => g.TenantId == TenantId && g.IsDeleted == false
+                               && g.gdStatus == "05" 
+                               && ((g.finInsUniqueNumber != null && fis_gds.fis.Contains(g.finInsUniqueNumber)) 
+                                    || (g.gdNumber != null && fis_gds.gds != null && fis_gds.gds.Contains(g.gdNumber))))
+                       .Select(g => new
+                       {
+                           g.GDDate,
+                           g.Id,
+                           g.IsDeleted,
+                           TenantId = g.TenantId,
+                           g.finInsUniqueNumber,
+                           g.modeOfPayment,
+                           g.gdNumber,
+                           g.PAYLOAD
+                       })
+                        .ToList();
+                result = rawResult.Select(g => new GoodsDeclaration
+                {
+                    Id = g.Id,
+                    IsDeleted = g.IsDeleted,
+                    TenantId = g.TenantId,
+                    finInsUniqueNumber = g.finInsUniqueNumber,
+                    modeOfPayment = g.modeOfPayment,
+                    gdNumber = g.gdNumber,
+                    GDDate = g.GDDate,
+                    PAYLOAD = g.PAYLOAD
 
                 }).ToList();
 
@@ -489,8 +650,44 @@ namespace ExportOverDueFileUploader.DBHelper
                 return null;
             }
         }
+        public static List<FinancialInstrument> GetFinancialInstrumentForLink(long TenantId, long fileId)
+        {
+            try
+            {
+                var context = new ExportOverDueContext();
+                var rawResult = context.FinancialInstrument.Where(g => g.TenantId == TenantId && g.IsDeleted == false
+                                                                    && g.FileAuditId == fileId && g.RESPONSE_CODE == "200")
+                                                            .Select(f => new
+                                                            {
+                                                                f.Id,
+                                                                f.IsDeleted,
+                                                                f.TenantId,
+                                                                f.finInsUniqueNumber,
+                                                                f.modeOfPayment,
+                                                                f.PAYLOAD,
+                                                                f.openAccountGdNumber
+                                                            })
+                                                            .ToList();
 
+                List <FinancialInstrument> result = rawResult.Select(f => new FinancialInstrument
+                {
+                    Id = f.Id,
+                    IsDeleted = f.IsDeleted,
+                    TenantId = f.TenantId,
+                    finInsUniqueNumber = f.finInsUniqueNumber,
+                    modeOfPayment = f.modeOfPayment,
+                    PAYLOAD = f.PAYLOAD,
+                    openAccountGdNumber = f.openAccountGdNumber
+                }).Distinct().ToList();
+                return result;
 
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error Fetching FinancialInstrument Data", ex.Message);
+                return null;
+            }
+        }
         #endregion
 
 

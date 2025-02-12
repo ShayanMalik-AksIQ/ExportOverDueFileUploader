@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
@@ -49,4 +50,5 @@ public partial class GoodsDeclarationImport
     public DateTime? DeletionTime { get; set; }
 
     public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = [];
+    public virtual ICollection<AggregiatedResultImport>? AggregiatedResultImports { get; set; }
 }

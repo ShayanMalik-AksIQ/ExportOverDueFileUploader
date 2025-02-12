@@ -77,42 +77,40 @@ namespace ExportOverDueFileUploader.DataImporter
                 var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture);
 
                 // Read CSV headers
-                using (var reader = new StreamReader(csvFilePath))
-                using (var csv = new CsvReader(reader, csvConfig))
+                using var reader = new StreamReader(csvFilePath);
+                using var csv = new CsvReader(reader, csvConfig);
+                // Read the headers without advancing the reader
+                csv.Read();
+                csv.ReadHeader();
+
+                // Get the headers as an array of strings
+                // var headers = csv.HeaderRecord.Where(header => header != null && header != "").ToList();
+                var headers = csv.HeaderRecord.ToList();
+
+                var HeaderToValidate = HeadersToValidate.Split("||").ToList();
+                // Check if the headers match the expected headers
+                if (HeaderToValidate.All(item => headers.Contains(item)) && headers.All(item => HeaderToValidate.Contains(item)))
                 {
-                    // Read the headers without advancing the reader
-                    csv.Read();
-                    csv.ReadHeader();
-
-                    // Get the headers as an array of strings
-                    // var headers = csv.HeaderRecord.Where(header => header != null && header != "").ToList();
-                    var headers = csv.HeaderRecord.ToList();
-
-                    var HeaderToValidate = HeadersToValidate.Split("||").ToList();
-                    // Check if the headers match the expected headers
-                    if (HeaderToValidate.All(item => headers.Contains(item)) && headers.All(item => HeaderToValidate.Contains(item)))
-                    {
-                        // Headers match, proceed to read CSV data into a list of dictionaries
-                        List<Dictionary<string, object>> csvData = csv.GetRecords<dynamic>()
+                    // Headers match, proceed to read CSV data into a list of dictionaries
+                    List<Dictionary<string, object>> csvData = csv.GetRecords<dynamic>()
                     .Select(record => ((IDictionary<string, object>)record)
-                        .ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value?.ToString()))
+                        .ToDictionary(kvp => kvp.Key, kvp => (object)(kvp.Value?.ToString() ?? "")))
                     .ToList();
 
-                        var settings = new JsonSerializerSettings
-                        {
-                            Formatting = Newtonsoft.Json.Formatting.Indented,
-                            Converters = { new EmptyStringToNullConverter() }
-                        };
-
-                        // Return the JSON representation of the CSV data
-                        return JsonConvert.SerializeObject(csvData, settings);
-                    }
-                    else
+                    var settings = new JsonSerializerSettings
                     {
-                        Seriloger.LoggerInstance.Error("Hadders MissMached");
-                        // Headers do not match, return an error message
-                        return "Error";
-                    }
+                        Formatting = Newtonsoft.Json.Formatting.Indented,
+                        Converters = { new EmptyStringToNullConverter() }
+                    };
+
+                    // Return the JSON representation of the CSV data
+                    return JsonConvert.SerializeObject(csvData, settings);
+                }
+                else
+                {
+                    Seriloger.LoggerInstance.Error("Hadders MissMached");
+                    // Headers do not match, return an error message
+                    return "Error";
                 }
 
 

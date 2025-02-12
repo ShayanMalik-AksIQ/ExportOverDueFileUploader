@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
+using Microsoft.EntityFrameworkCore;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
@@ -24,10 +25,18 @@ public partial class ExportOverDueContext : DbContext
     public virtual DbSet<FileType> FileTypes { get; set; }
 
     public virtual DbSet<FinancialInstrumentImport> FinancialInstrumentImports { get; set; }
+    public virtual DbSet<FinancialInstrument> FinancialInstrument { get; set; }
 
     public virtual DbSet<GdFiLink> GdFiLinks { get; set; }
+    public virtual DbSet<GD_FI_Link> Gd_Fi_Link { get; set; }
 
     public virtual DbSet<GoodsDeclarationImport> GoodsDeclarationImports { get; set; }
+    public virtual DbSet<GoodsDeclaration> GoodsDeclaration { get; set; }
+
+    public virtual DbSet<ComparisonResultImport> ComparisonResultImports { get; set; }
+    public virtual DbSet<ComparisonResultExport> ComparisonResultExports { get; set; }
+    public virtual DbSet<AggregiatedResultImport> AggregiatedResultImports { get; set; }
+    public virtual DbSet<AggregiatedResultExport> AggregiatedResultExports { get; set; }
 
     public virtual DbSet<Module> Modules { get; set; }
 
@@ -40,15 +49,38 @@ public partial class ExportOverDueContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<ComparisonResult>(entity =>
+        //modelBuilder.Entity<ComparisonResult>(entity =>
+        //{
+        //    entity.HasIndex(e => e.GdFiLinkId, "IX_ComparisonResults_GdFiLinkId");
+
+        //    entity.HasIndex(e => e.RequestStatusId, "IX_ComparisonResults_RequestStatusId");
+
+        //    entity.HasOne(d => d.GdFiLink).WithMany(p => p.ComparisonResults).HasForeignKey(d => d.GdFiLinkId);
+
+        //    entity.HasOne(d => d.RequestStatus).WithMany(p => p.ComparisonResults).HasForeignKey(d => d.RequestStatusId);
+        //});
+
+        modelBuilder.Entity<AggregiatedResultExport>(entity =>
         {
-            entity.HasIndex(e => e.GdFiLinkId, "IX_ComparisonResults_GdFiLinkId");
-
-            entity.HasIndex(e => e.RequestStatusId, "IX_ComparisonResults_RequestStatusId");
-
-            entity.HasOne(d => d.GdFiLink).WithMany(p => p.ComparisonResults).HasForeignKey(d => d.GdFiLinkId);
-
-            entity.HasOne(d => d.RequestStatus).WithMany(p => p.ComparisonResults).HasForeignKey(d => d.RequestStatusId);
+            entity.HasOne(ar => ar.Fi).WithMany(fi => fi.AggregiatedResultExports);
+            entity.HasOne(ar => ar.Gd).WithMany(fi => fi.AggregiatedResultExports);
+            entity.ToTable("AggregiatedResultExports");
+        });
+        modelBuilder.Entity<AggregiatedResultImport>(entity =>
+        {
+            entity.HasOne(ar => ar.Fi).WithMany(fi => fi.AggregiatedResultImports);
+            entity.HasOne(ar => ar.Gd).WithMany(fi => fi.AggregiatedResultImports);
+            entity.ToTable("AggregiatedResultImports");
+        });
+        modelBuilder.Entity<ComparisonResultExport>(entity =>
+        {
+            entity.HasOne(ar => ar.Gd_Fi_Link).WithMany(fi => fi.ComparisonResultExports);
+            entity.ToTable("ComparisonResultExports");
+        });
+        modelBuilder.Entity<ComparisonResultImport>(entity =>
+        {
+            entity.HasOne(ar => ar.GdFiLink).WithMany(fi => fi.ComparisonResultImports);
+            entity.ToTable("ComparisonResultImports");
         });
 
         modelBuilder.Entity<DefaultSetting>(entity =>
@@ -118,12 +150,12 @@ public partial class ExportOverDueContext : DbContext
         });
 
 
-        modelBuilder.Entity<ComparisonResult>(b =>
-        {
-            b.HasOne(b => b.Fi).WithMany(b => b.ComparisonResults);
-        });
+        //modelBuilder.Entity<ComparisonResult>(b =>
+        //{
+        //    b.HasOne(b => b.Fi).WithMany(b => b.ComparisonResults);
+        //});
 
-        OnModelCreatingPartial(modelBuilder);
+        //OnModelCreatingPartial(modelBuilder);
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);

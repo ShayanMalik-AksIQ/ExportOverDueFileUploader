@@ -1,17 +1,7 @@
-﻿using DocumentFormat.OpenXml.Drawing.Charts;
-using ExportOverDueFileUploader.DBmodels;
-using ExportOverDueFileUploader.Modles.JsonHelper;
-using Microsoft.IdentityModel.Tokens;
+﻿using ExportOverDueFileUploader.Modles.JsonHelper;
 using Newtonsoft.Json;
-using Serilog;
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ExportOverDueFileUploader.DataImporter
 {
@@ -49,18 +39,27 @@ namespace ExportOverDueFileUploader.DataImporter
 
         public static List<string> LoadGdInfoColoums(DataRow _row)
         {
+            _row["TRANSMISSION_DATETIME"] = DBNull.Value;
             try
             {
-                List<string> fiNumber = new List<string>();
-                GdPayload payload = JsonConvert.DeserializeObject<GdPayload>(_row["PAYLOAD"]?.ToString());
-                List<string> lstFiNumber = new List<string>();
-                List<string> lstModeOfPayment = new List<string>();
+                List<string> fiNumber = [];
+                GdPayload? payload = JsonConvert.DeserializeObject<GdPayload>(_row["PAYLOAD"].ToString()!);
+                List<string> lstFiNumber = [];
+                List<string> lstModeOfPayment = [];
 
                 if (payload?.data?.financialInformation?.financialInstrument != null)
                 {
+                    if(payload.data.financialInformation.financialInstrument.Count == 1)
+                    {
 
-
-
+                        _row["FinInsUniqueNumber"] = payload.data.financialInformation.financialInstrument.First().finInsUniqueNumber;
+                        _row["ModeOfPayment"] = payload.data.financialInformation.financialInstrument.First().modeOfPayment;
+                    }
+                    else
+                    {
+                        fiNumber.AddRange(payload.data.financialInformation.financialInstrument.Select(f => f.finInsUniqueNumber));
+                        lstModeOfPayment.AddRange(payload.data.financialInformation.financialInstrument.Select(f => f.modeOfPayment));
+                    }
                 }
                 else if (payload?.data?.financialInfo != null)
                 {
@@ -71,17 +70,23 @@ namespace ExportOverDueFileUploader.DataImporter
                 _row["gdNumber"] = payload?.data?.gdNumber?.ToString();
                 _row["gdStatus"] = payload?.data?.gdStatus?.ToString();
                 _row["consigneeName"] = payload?.data?.consignorConsigneeInfo?.consigneeName.ToString();
-                _row["LstfinInsUniqueNumbers"] = lstFiNumber.Count > 0 ? string.Join(",", lstFiNumber) : null;
+                _row["LstfinInsUniqueNumbers"] = lstFiNumber.Count > 0 ? string.Join(", ", lstFiNumber) : null;
                 _row["blDate"] = payload?.data?.blAwbDate?.ToString();
                 _row["ShipmentDate"] = payload?.data?.blAwbDate?.ToString();
                 _row["itemInformationJson"] = payload?.data?.itemInformation != null ? JsonConvert.SerializeObject(payload?.data?.itemInformation) : null;
                 _row["ShipmentCity"] = payload?.data?.generalInformation?.destinationCountry;//ask
                 _row["blDate"] = payload?.data?.blAwbDate?.ToString();
 
+                if (DateTime.TryParseExact(payload?.timestamp, "yyyyMMddHHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dateTime))
+                {
+                    string sqlFormattedDate = dateTime.ToString("yyyy-MM-dd HH:mm:ss.fffffff");
+                    _row["TRANSMISSION_DATETIME"] = sqlFormattedDate;
+                }
+
+
                 if (payload?.data?.gdNumber != null)
                 {
-
-                    var lstgddate = payload?.data?.gdNumber?.ToString().Split('-').ToList().Skip(3).Take(3).ToList();
+                    var lstgddate = payload.data.gdNumber.ToString().Split('-').ToList().Skip(3).Take(3).ToList();
                     _row["GDDate"] = new DateTime(Convert.ToInt16(lstgddate[2]), Convert.ToInt16(lstgddate[1]), Convert.ToInt16(lstgddate[0]));
                 }
 

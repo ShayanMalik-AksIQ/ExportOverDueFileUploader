@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
 
 namespace ExportOverDueFileUploader.DBmodels;
 
@@ -9,17 +8,17 @@ public partial class GD_FI_Link
 
     public string? type { get; set; }
 
-    public double Amount { get; set; }
+    public double Amount { get; set; } = 0;
 
-    public int advPayPercentage { get; set; }
+    public int advPayPercentage { get; set; } = 0;
 
-    public int docAgainstPayPercentage { get; set; }
+    public int docAgainstPayPercentage { get; set; } = 0;
 
-    public int docAgainstAcceptancePercentage { get; set; }
+    public int docAgainstAcceptancePercentage { get; set; } = 0;
 
-    public int sightPercentage { get; set; }
+    public int sightPercentage { get; set; } = 0;
 
-    public int usancePercentage { get; set; }
+    public int usancePercentage { get; set; } = 0;
 
     public string? MatruityDate { get; set; }
 
@@ -48,4 +47,5 @@ public partial class GD_FI_Link
     public virtual FinancialInstrument? Fi { get; set; }
 
     public virtual GoodsDeclaration? Gd { get; set; }
+    public virtual ICollection<ComparisonResultExport>? ComparisonResultExports { get; set; }
 }

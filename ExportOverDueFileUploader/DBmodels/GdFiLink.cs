@@ -1,4 +1,6 @@
-﻿namespace ExportOverDueFileUploader.DBmodels;
+﻿using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
+
+namespace ExportOverDueFileUploader.DBmodels;
 
 public partial class GdFiLink
 {
@@ -28,11 +30,12 @@ public partial class GdFiLink
 
     public long? RequestStatusId { get; set; }
 
-    public virtual ICollection<ComparisonResult> ComparisonResults { get; set; } = new List<ComparisonResult>();
+    //public virtual ICollection<ComparisonResult> ComparisonResults { get; set; } = new List<ComparisonResult>();
 
     public virtual FinancialInstrumentImport? Fi { get; set; }
 
     public virtual GoodsDeclarationImport? Gd { get; set; }
+    public virtual ICollection<ComparisonResultImport>? ComparisonResultImports { get; set; }
 
     public virtual RequestStatus? RequestStatus { get; set; }
 }

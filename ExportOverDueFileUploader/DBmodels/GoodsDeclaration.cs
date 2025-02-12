@@ -1,4 +1,5 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
+using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -84,6 +85,7 @@ public partial class GoodsDeclaration
 
     public long? FileAuditId { get; set; }
 
+    public virtual ICollection<AggregiatedResultExport>? AggregiatedResultExports { get; set; }
 
     public virtual ICollection<GD_FI_Link> GD_FI_Links { get; set; } = new List<GD_FI_Link>();
     [NotMapped]

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace ExportOverDueFileUploader.DBmodels;
+﻿namespace ExportOverDueFileUploader.DBmodels;
 
 public partial class ComparatorSetting
 {
@@ -15,6 +12,8 @@ public partial class ComparatorSetting
 
     public int TenantId { get; set; }
 
+    public int ModuleId { get; set; }
+
     public DateTime CreationTime { get; set; }
 
     public long? CreatorUserId { get; set; }
@@ -26,4 +25,6 @@ public partial class ComparatorSetting
     public int IsSameEntity { get; set; }
 
     public bool CalculateVariance { get; set; }
+
+    public bool IsAggregiated { get; set; }
 }

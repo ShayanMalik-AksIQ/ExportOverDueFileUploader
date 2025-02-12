@@ -1,12 +1,8 @@
 ﻿using ExportOverDueFileUploader.DataImporter;
 using ExportOverDueFileUploader.DBHelper;
 using ExportOverDueFileUploader.DBmodels;
-using ExportOverDueFileUploader.Modles;
-using ExportOverDueFileUploader.Modles.JsonHelper;
-using ExportOverDueFileUploader.ValidateIqBizLogic;
+using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
 
 namespace ExportOverDueFileUploader.MatuirtyBO
 {
@@ -179,418 +175,419 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         //    CustomRepo.InsertFI_GD_Link(V20Dates);
         //    return null;
         //}
-        public static string SyncNewGd(long fileId, NewFiGdFilterModel fis_OpenGds)
-        {
-            try
-            {
-                int count = 0;
-                Seriloger.LoggerInstance.Information($" Sync New Gds In Process.... :");
-                ExportOverDueContext context = new ExportOverDueContext();
-                List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
-                List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(AppSettings.TenantId, fileId).ToList();//gd that newly came in 
 
-                if (lstgds.Count == 0)
-                {
-                    Seriloger.LoggerInstance.Information($"No Gds To Sync");
+        //public static string SyncNewGd(long fileId, NewFiGdFilterModel fis_OpenGds)
+        //{
+        //    try
+        //    {
+        //        int count = 0;
+        //        Seriloger.LoggerInstance.Information($" Sync New Gds In Process.... :");
+        //        ExportOverDueContext context = new ExportOverDueContext();
+        //        List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
+        //        List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(AppSettings.TenantId, fileId).ToList();//gd that newly came in 
 
-                    return "No Gds";
-                }
-                var lstfis = CustomRepo.GetFinancialInstrumentForV20Dates(AppSettings.TenantId, fis_OpenGds).ToList();
-                if (lstfis.Count == 0)
-                {
-                    Seriloger.LoggerInstance.Information($"No Fis To Sync");
+        //        if (lstgds.Count == 0)
+        //        {
+        //            Seriloger.LoggerInstance.Information($"No Gds To Sync");
 
-                    //return "No Fis";
-                }
+        //            return "No Gds";
+        //        }
+        //        var lstfis = CustomRepo.GetFinancialInstrumentForV20Dates(AppSettings.TenantId, fis_OpenGds).ToList();
+        //        if (lstfis.Count == 0)
+        //        {
+        //            Seriloger.LoggerInstance.Information($"No Fis To Sync");
 
-                foreach (var gd in lstgds)
-                {
-                    List<GD_FI_Link> GdV20Dates = new List<GD_FI_Link>();
-                    if (gd.gdNumber == null)
-                    {
-                        continue;
-                    }
-                    if (!gd.LstfinInsUniqueNumbers.IsNullOrEmpty())
-                    {
-                        foreach (var item in gd.FiNumbersAndModes)
-                        {
-                            DateTime gdCreationDate = gd.GDDate.Value;
-                            var FiData = lstfis.Where(x => x.finInsUniqueNumber == item.FiNumber).FirstOrDefault();
-                            if (item.FiNumber.IsNullOrEmpty())
-                            {
-                                // continue;
-                            }
-                            if (FiData != null && !item.FiNumber.IsNullOrEmpty())
-                            {
-                                #region If Lc Data is Avaliable
-                                if (FiData.lcData != null && FiData.lcData != "null")
-                                {
-                                    DateTime gdDate = gd.GDDate.Value;
-                                    if (false)
-                                    {
-                                        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                        if (x > 0)
-                                        {
-                                            gdDate = gd.BLDateVale.Value;
-                                        }
-                                    }
-                                    Lcdata FiLcData = JsonConvert.DeserializeObject<Lcdata>(FiData.lcData);
-                                    try
-                                    {
-                                        GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, FiLcData.sightPercentage, FiLcData.usancePercentage, 0, 0, FiLcData.advPayPercentage, FiData.modeOfPayment, FiData.FiCertifcationdate, FiLcData.days, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
-                                    }
-                                    catch
-                                    {
-                                        continue;
-                                    }
-                                }
-                                #endregion If Lc Data is Avaliable
-                                #region If Contract Collection Data is Avaliable
-                                if (FiData.contractCollectionData != null && FiData.contractCollectionData != "null")
-                                {
-                                    DateTime gdDate = gd.GDDate.Value;
-                                    if (false)
-                                    {
-                                        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                        if (x > 0)
-                                        {
-                                            gdDate = gd.BLDateVale.Value;
-                                        }
-                                    }
-                                    Contractcollectiondata FiCCData = JsonConvert.DeserializeObject<Contractcollectiondata>(FiData.contractCollectionData);
-                                    try
-                                    {
-                                        GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, 0, 0, FiCCData.docAgainstPayPercentage, FiCCData.docAgainstAcceptancePercentage, FiCCData.advPayPercentage, FiData.modeOfPayment, FiData.FiCertifcationdate, FiCCData.days, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
-                                    }
-                                    catch
-                                    {
-                                        continue;
-                                    }
-                                }
-                                #endregion If Contract Collection Data is Avaliable
-                                #region If Mode of Payemnt 306
-                                // ie Fi is avalible but no lc of cc attacheds
-                                else if (FiData.modeOfPayment == "306")
-                                {
-                                    DateTime gdDate = gd.GDDate.Value;
-                                    if (false)
-                                    {
-                                        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                        if (x > 0)
-                                        {
-                                            gdDate = gd.BLDateVale.Value;
-                                        }
-                                    }
-                                    try
-                                    {
-                                        GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, 0, 0, 0, 0, 0, FiData.modeOfPayment, FiData.FiCertifcationdate, 0, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
-                                    }
-                                    catch
-                                    {
-                                        continue;
-                                    }
-                                }
-                                #endregion If Mode of Payemnt 306
-                                #region useless code
-                                //#region If Mode of Payemnt 305
-                                //// ie Fi is not avalible in gd
-                                //else if (FiData.modeOfPayment == "305")
-                                //{
-                                //    DateTime gdDate = gd.GDDate.Value;
-                                //    if (false)
-                                //    {
-                                //        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                //        if (x > 0)
-                                //        {
-                                //            gdDate = gd.BLDateVale.Value;
-                                //        }
-                                //    }
-                                //    gdDate = gdDate.AddDays(45);
-                                //    GdV20Dates.Add(new GD_FI_Link()
-                                //    {
-                                //        GdId = gd.Id,
-                                //        FiId = FiData.Id,
-                                //        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
-                                //        _MatruityDate = gdDate
-                                //    });
-                                //}
-                                //#endregion If Mode of Payemnt 305
-                                #endregion useless code
-                            }
-                            #region If Mode of Payemnt 305
-                            else if (item.ModeOFPayment == "305")
-                            {
-                                FiData = lstfis.Where(x => x.openAccountGdNumber == gd.gdNumber).FirstOrDefault();
+        //            //return "No Fis";
+        //        }
 
-                                DateTime gdDate = gd.GDDate.Value;
-                                if (false)
-                                {
-                                    int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                    if (x > 0)
-                                    {
-                                        gdDate = gd.BLDateVale.Value;
-                                    }
-                                }
-                                gdDate = gdDate.AddDays(45);// OpenAccount
-                                if (FiData != null)
-                                {
-                                    GdV20Dates.Add(new GD_FI_Link()
-                                    {
-                                        GdId = gd.Id,
-                                        FiId = FiData == null ? null : FiData.Id,
-                                        type = "Open Account",
-                                        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
-                                        _MatruityDate = gdDate
-                                    });
-                                }
-                                else
-                                {
-                                    GdV20Dates.Add(new GD_FI_Link()
-                                    {
-                                        GdId = gd.Id,
-                                        //   FiId = FiData == null ? null : FiData.Id,
-                                        type = "Open Account",
-                                        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
-                                        _MatruityDate = gdDate
-                                    });
-                                }
+        //        foreach (var gd in lstgds)
+        //        {
+        //            List<GD_FI_Link> GdV20Dates = new List<GD_FI_Link>();
+        //            if (gd.gdNumber == null)
+        //            {
+        //                continue;
+        //            }
+        //            if (!gd.LstfinInsUniqueNumbers.IsNullOrEmpty())
+        //            {
+        //                foreach (var item in gd.FiNumbersAndModes)
+        //                {
+        //                    DateTime gdCreationDate = gd.GDDate.Value;
+        //                    var FiData = lstfis.Where(x => x.finInsUniqueNumber == item.FiNumber).FirstOrDefault();
+        //                    if (item.FiNumber.IsNullOrEmpty())
+        //                    {
+        //                        // continue;
+        //                    }
+        //                    if (FiData != null && !item.FiNumber.IsNullOrEmpty())
+        //                    {
+        //                        #region If Lc Data is Avaliable
+        //                        if (FiData.lcData != null && FiData.lcData != "null")
+        //                        {
+        //                            DateTime gdDate = gd.GDDate.Value;
+        //                            if (false)
+        //                            {
+        //                                int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                                if (x > 0)
+        //                                {
+        //                                    gdDate = gd.BLDateVale.Value;
+        //                                }
+        //                            }
+        //                            Lcdata FiLcData = JsonConvert.DeserializeObject<Lcdata>(FiData.lcData);
+        //                            try
+        //                            {
+        //                                GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, FiLcData.sightPercentage, FiLcData.usancePercentage, 0, 0, FiLcData.advPayPercentage, FiData.modeOfPayment, FiData.FiCertifcationdate, FiLcData.days, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
+        //                            }
+        //                            catch
+        //                            {
+        //                                continue;
+        //                            }
+        //                        }
+        //                        #endregion If Lc Data is Avaliable
+        //                        #region If Contract Collection Data is Avaliable
+        //                        if (FiData.contractCollectionData != null && FiData.contractCollectionData != "null")
+        //                        {
+        //                            DateTime gdDate = gd.GDDate.Value;
+        //                            if (false)
+        //                            {
+        //                                int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                                if (x > 0)
+        //                                {
+        //                                    gdDate = gd.BLDateVale.Value;
+        //                                }
+        //                            }
+        //                            Contractcollectiondata FiCCData = JsonConvert.DeserializeObject<Contractcollectiondata>(FiData.contractCollectionData);
+        //                            try
+        //                            {
+        //                                GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, 0, 0, FiCCData.docAgainstPayPercentage, FiCCData.docAgainstAcceptancePercentage, FiCCData.advPayPercentage, FiData.modeOfPayment, FiData.FiCertifcationdate, FiCCData.days, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
+        //                            }
+        //                            catch
+        //                            {
+        //                                continue;
+        //                            }
+        //                        }
+        //                        #endregion If Contract Collection Data is Avaliable
+        //                        #region If Mode of Payemnt 306
+        //                        // ie Fi is avalible but no lc of cc attacheds
+        //                        else if (FiData.modeOfPayment == "306")
+        //                        {
+        //                            DateTime gdDate = gd.GDDate.Value;
+        //                            if (false)
+        //                            {
+        //                                int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                                if (x > 0)
+        //                                {
+        //                                    gdDate = gd.BLDateVale.Value;
+        //                                }
+        //                            }
+        //                            try
+        //                            {
+        //                                GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, 0, 0, 0, 0, 0, FiData.modeOfPayment, FiData.FiCertifcationdate, 0, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
+        //                            }
+        //                            catch
+        //                            {
+        //                                continue;
+        //                            }
+        //                        }
+        //                        #endregion If Mode of Payemnt 306
+        //                        #region useless code
+        //                        //#region If Mode of Payemnt 305
+        //                        //// ie Fi is not avalible in gd
+        //                        //else if (FiData.modeOfPayment == "305")
+        //                        //{
+        //                        //    DateTime gdDate = gd.GDDate.Value;
+        //                        //    if (false)
+        //                        //    {
+        //                        //        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                        //        if (x > 0)
+        //                        //        {
+        //                        //            gdDate = gd.BLDateVale.Value;
+        //                        //        }
+        //                        //    }
+        //                        //    gdDate = gdDate.AddDays(45);
+        //                        //    GdV20Dates.Add(new GD_FI_Link()
+        //                        //    {
+        //                        //        GdId = gd.Id,
+        //                        //        FiId = FiData.Id,
+        //                        //        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
+        //                        //        _MatruityDate = gdDate
+        //                        //    });
+        //                        //}
+        //                        //#endregion If Mode of Payemnt 305
+        //                        #endregion useless code
+        //                    }
+        //                    #region If Mode of Payemnt 305
+        //                    else if (item.ModeOFPayment == "305")
+        //                    {
+        //                        FiData = lstfis.Where(x => x.openAccountGdNumber == gd.gdNumber).FirstOrDefault();
 
-
-                            }
-                            #endregion  If Mode of Payemnt 305
-                            else
-                            {
-                                count++;
-                                //GdV20Dates.Add(new GD_FI_Link()
-                                //{
-                                //    GdId = gd.Id,
-                                //    //    GDNumber = gd.gdNumber,
-                                //    //    FINumber = item.FiNumber + " - Not in FI File"
-                                //});
-                            }
-                        }
-                    }
-                    if (!GdV20Dates.IsNullOrEmpty())
-                    {
+        //                        DateTime gdDate = gd.GDDate.Value;
+        //                        if (false)
+        //                        {
+        //                            int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                            if (x > 0)
+        //                            {
+        //                                gdDate = gd.BLDateVale.Value;
+        //                            }
+        //                        }
+        //                        gdDate = gdDate.AddDays(45);// OpenAccount
+        //                        if (FiData != null)
+        //                        {
+        //                            GdV20Dates.Add(new GD_FI_Link()
+        //                            {
+        //                                GdId = gd.Id,
+        //                                FiId = FiData == null ? null : FiData.Id,
+        //                                type = "Open Account",
+        //                                MatruityDate = gdDate.ToString("dd-MMM-yyy"),
+        //                                _MatruityDate = gdDate
+        //                            });
+        //                        }
+        //                        else
+        //                        {
+        //                            GdV20Dates.Add(new GD_FI_Link()
+        //                            {
+        //                                GdId = gd.Id,
+        //                                //   FiId = FiData == null ? null : FiData.Id,
+        //                                type = "Open Account",
+        //                                MatruityDate = gdDate.ToString("dd-MMM-yyy"),
+        //                                _MatruityDate = gdDate
+        //                            });
+        //                        }
 
 
-
-                    }
-                    V20Dates.AddRange(GdV20Dates);
-                }
-                CustomRepo.InsertFI_GD_Link(V20Dates);
-                return "Success";
-            }
-            catch (Exception ex)
-            {
-                Seriloger.LoggerInstance.Error($"Error In Sync New Gds :{ex.Message}");
-                return $"Error :{ex.Message}";
-            }
-        }
-        public static string SyncNewFi(long fileId, NewFiGdFilterModel fis_OpenGds)
-        {
-            try
-            {
-                List<long> OpengdIds = new List<long>();
-                Seriloger.LoggerInstance.Information($" Sync New Fis In Process.... :");
-                ExportOverDueContext context = new ExportOverDueContext();
-                List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
-                List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(fis_OpenGds, AppSettings.TenantId).DistinctBy(gd => gd.Id).ToList();//gd that newly came in 
-
-                if (lstgds.Count == 0)
-                {
-                    Seriloger.LoggerInstance.Information($"No Gds To Sync");
-
-                    return "No Gds";
-                }
-                var lstfis = CustomRepo.GetFinancialInstrumentForV20Dates(AppSettings.TenantId, fileId).ToList();
-                if (lstfis.Count == 0)
-                {
-                    Seriloger.LoggerInstance.Information($"No Fis To Sync");
-
-                    return "No Fis";
-                }
-
-                foreach (var gd in lstgds)
-                {
-                    List<GD_FI_Link> GdV20Dates = new List<GD_FI_Link>();
-                    if (gd.gdNumber == null)
-                    {
-                        continue;
-                    }
-                    if (!gd.LstfinInsUniqueNumbers.IsNullOrEmpty())
-                    {
-                        foreach (var item in gd.FiNumbersAndModes)
-                        {
-                            DateTime gdCreationDate = gd.GDDate.Value;
-                            DBmodels.FinancialInstrument FiData = new DBmodels.FinancialInstrument();
-                            if (item.FiNumber != null && item.FiNumber != "")
-                            {
-                                FiData = lstfis.Where(x => x.finInsUniqueNumber == item.FiNumber).FirstOrDefault();
-                            }
-                            if (FiData != null && !item.FiNumber.IsNullOrEmpty())
-                            {
-                                #region If Lc Data is Avaliable
-                                if (FiData.lcData != null && FiData.lcData != "null")
-                                {
-                                    DateTime gdDate = gd.GDDate.Value;
-                                    if (false)
-                                    {
-                                        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                        if (x > 0)
-                                        {
-                                            gdDate = gd.BLDateVale.Value;
-                                        }
-                                    }
-                                    Lcdata FiLcData = JsonConvert.DeserializeObject<Lcdata>(FiData.lcData);
-                                    try
-                                    {
-                                        GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, FiLcData.sightPercentage, FiLcData.usancePercentage, 0, 0, FiLcData.advPayPercentage, FiData.modeOfPayment, FiData.FiCertifcationdate, FiLcData.days, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
-                                    }
-                                    catch
-                                    {
-                                        continue;
-                                    }
-                                }
-                                #endregion If Lc Data is Avaliable
-                                #region If Contract Collection Data is Avaliable
-                                if (FiData.contractCollectionData != null && FiData.contractCollectionData != "null")
-                                {
-                                    DateTime gdDate = gd.GDDate.Value;
-                                    if (false)
-                                    {
-                                        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                        if (x > 0)
-                                        {
-                                            gdDate = gd.BLDateVale.Value;
-                                        }
-                                    }
-                                    Contractcollectiondata FiCCData = JsonConvert.DeserializeObject<Contractcollectiondata>(FiData.contractCollectionData);
-                                    try
-                                    {
-                                        GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, 0, 0, FiCCData.docAgainstPayPercentage, FiCCData.docAgainstAcceptancePercentage, FiCCData.advPayPercentage, FiData.modeOfPayment, FiData.FiCertifcationdate, FiCCData.days, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
-                                    }
-                                    catch
-                                    {
-                                        continue;
-                                    }
-                                }
-                                #endregion If Contract Collection Data is Avaliable
-                                #region If Mode of Payemnt 306
-                                // ie Fi is avalible but no lc of cc attacheds
-                                else if (FiData.modeOfPayment == "306")
-                                {
-                                    DateTime gdDate = gd.GDDate.Value;
-                                    if (false)
-                                    {
-                                        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                        if (x > 0)
-                                        {
-                                            gdDate = gd.BLDateVale.Value;
-                                        }
-                                    }
-                                    try
-                                    {
-                                        GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, 0, 0, 0, 0, 0, FiData.modeOfPayment, FiData.FiCertifcationdate, 0, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
-                                    }
-                                    catch
-                                    {
-                                        continue;
-                                    }
-                                }
-                                #endregion If Mode of Payemnt 306
-                                #region useless code
-                                //#region If Mode of Payemnt 305
-                                //// ie Fi is not avalible in gd
-                                //else if (FiData.modeOfPayment == "305")
-                                //{
-                                //    DateTime gdDate = gd.GDDate.Value;
-                                //    if (false)
-                                //    {
-                                //        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                //        if (x > 0)
-                                //        {
-                                //            gdDate = gd.BLDateVale.Value;
-                                //        }
-                                //    }
-                                //    gdDate = gdDate.AddDays(45);
-                                //    GdV20Dates.Add(new GD_FI_Link()
-                                //    {
-                                //        GdId = gd.Id,
-                                //        FiId = FiData.Id,
-                                //        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
-                                //        _MatruityDate = gdDate
-                                //    });
-                                //}
-                                //#endregion If Mode of Payemnt 305
-                                #endregion useless code
-                            }
-                            #region If Mode of Payemnt 305
-                            else if (item.ModeOFPayment == "305")
-                            {
-
-                                // Coment as 305 will be handled by Lodgment and dosent Requrier Fi to be atttached
-
-
-                                //FiData = lstfis.Where(x => x.openAccountGdNumber == gd.gdNumber).FirstOrDefault();
-
-                                //DateTime gdDate = gd.GDDate.Value;
-                                //if (false)
-                                //{
-                                //    int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
-                                //    if (x > 0)
-                                //    {
-                                //        gdDate = gd.BLDateVale.Value;
-                                //    }
-                                //}
-                                //gdDate = gdDate.AddDays(45);
-                                //if (FiData != null)
-                                //{
-
-                                //    GdV20Dates.Add(new GD_FI_Link()
-                                //    {
-                                //        GdId = gd.Id,
-                                //        FiId = FiData == null ? null : FiData.Id,
-                                //        type = "Open Account",
-                                //        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
-                                //        _MatruityDate = gdDate
-                                //    });
-                                //    OpengdIds.Add(gd.Id);
-
-                                //}
-
-
-                            }
-                            #endregion  If Mode of Payemnt 305
-                            else
-                            {
-                                //GdV20Dates.Add(new GD_FI_Link()
-                                //{
-                                //    GdId = gd.Id,
-                                //    //    GDNumber = gd.gdNumber,
-                                //    //    FINumber = item.FiNumber + " - Not in FI File"
-                                //});
-                            }
-                        }
-                    }
-                    if (!GdV20Dates.IsNullOrEmpty())
-                    {
+        //                    }
+        //                    #endregion  If Mode of Payemnt 305
+        //                    else
+        //                    {
+        //                        count++;
+        //                        //GdV20Dates.Add(new GD_FI_Link()
+        //                        //{
+        //                        //    GdId = gd.Id,
+        //                        //    //    GDNumber = gd.gdNumber,
+        //                        //    //    FINumber = item.FiNumber + " - Not in FI File"
+        //                        //});
+        //                    }
+        //                }
+        //            }
+        //            if (!GdV20Dates.IsNullOrEmpty())
+        //            {
 
 
 
-                    }
-                    V20Dates.AddRange(GdV20Dates);
-                }
-                CustomRepo.InsertFI_GD_Link(V20Dates);
-                // CustomRepo.RemoveLinkFI_GD_Link(OpengdIds);
-                return "Success";
-            }
-            catch (Exception ex)
-            {
-                Seriloger.LoggerInstance.Error($"Error In Sync New Gds :{ex.Message}");
-                return $"Error :{ex.Message}";
-            }
-        }
+        //            }
+        //            V20Dates.AddRange(GdV20Dates);
+        //        }
+        //        CustomRepo.InsertFI_GD_Link(V20Dates);
+        //        return "Success";
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Seriloger.LoggerInstance.Error($"Error In Sync New Gds :{ex.Message}");
+        //        return $"Error :{ex.Message}";
+        //    }
+        //}
+        //public static string SyncNewFi(long fileId, NewFiGdFilterModel fis_OpenGds)
+        //{
+        //    try
+        //    {
+        //        List<long> OpengdIds = new List<long>();
+        //        Seriloger.LoggerInstance.Information($" Sync New Fis In Process.... :");
+        //        ExportOverDueContext context = new ExportOverDueContext();
+        //        List<GD_FI_Link> V20Dates = new List<GD_FI_Link>();
+        //        List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForV20Dates(fis_OpenGds, AppSettings.TenantId).DistinctBy(gd => gd.Id).ToList();//gd that newly came in 
+
+        //        if (lstgds.Count == 0)
+        //        {
+        //            Seriloger.LoggerInstance.Information($"No Gds To Sync");
+
+        //            return "No Gds";
+        //        }
+        //        var lstfis = CustomRepo.GetFinancialInstrumentForV20Dates(AppSettings.TenantId, fileId).ToList();
+        //        if (lstfis.Count == 0)
+        //        {
+        //            Seriloger.LoggerInstance.Information($"No Fis To Sync");
+
+        //            return "No Fis";
+        //        }
+
+        //        foreach (var gd in lstgds)
+        //        {
+        //            List<GD_FI_Link> GdV20Dates = new List<GD_FI_Link>();
+        //            if (gd.gdNumber == null)
+        //            {
+        //                continue;
+        //            }
+        //            if (!gd.LstfinInsUniqueNumbers.IsNullOrEmpty())
+        //            {
+        //                foreach (var item in gd.FiNumbersAndModes)
+        //                {
+        //                    DateTime gdCreationDate = gd.GDDate.Value;
+        //                    DBmodels.FinancialInstrument FiData = new DBmodels.FinancialInstrument();
+        //                    if (item.FiNumber != null && item.FiNumber != "")
+        //                    {
+        //                        FiData = lstfis.Where(x => x.finInsUniqueNumber == item.FiNumber).FirstOrDefault();
+        //                    }
+        //                    if (FiData != null && !item.FiNumber.IsNullOrEmpty())
+        //                    {
+        //                        #region If Lc Data is Avaliable
+        //                        if (FiData.lcData != null && FiData.lcData != "null")
+        //                        {
+        //                            DateTime gdDate = gd.GDDate.Value;
+        //                            if (false)
+        //                            {
+        //                                int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                                if (x > 0)
+        //                                {
+        //                                    gdDate = gd.BLDateVale.Value;
+        //                                }
+        //                            }
+        //                            Lcdata FiLcData = JsonConvert.DeserializeObject<Lcdata>(FiData.lcData);
+        //                            try
+        //                            {
+        //                                GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, FiLcData.sightPercentage, FiLcData.usancePercentage, 0, 0, FiLcData.advPayPercentage, FiData.modeOfPayment, FiData.FiCertifcationdate, FiLcData.days, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
+        //                            }
+        //                            catch
+        //                            {
+        //                                continue;
+        //                            }
+        //                        }
+        //                        #endregion If Lc Data is Avaliable
+        //                        #region If Contract Collection Data is Avaliable
+        //                        if (FiData.contractCollectionData != null && FiData.contractCollectionData != "null")
+        //                        {
+        //                            DateTime gdDate = gd.GDDate.Value;
+        //                            if (false)
+        //                            {
+        //                                int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                                if (x > 0)
+        //                                {
+        //                                    gdDate = gd.BLDateVale.Value;
+        //                                }
+        //                            }
+        //                            Contractcollectiondata FiCCData = JsonConvert.DeserializeObject<Contractcollectiondata>(FiData.contractCollectionData);
+        //                            try
+        //                            {
+        //                                GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, 0, 0, FiCCData.docAgainstPayPercentage, FiCCData.docAgainstAcceptancePercentage, FiCCData.advPayPercentage, FiData.modeOfPayment, FiData.FiCertifcationdate, FiCCData.days, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
+        //                            }
+        //                            catch
+        //                            {
+        //                                continue;
+        //                            }
+        //                        }
+        //                        #endregion If Contract Collection Data is Avaliable
+        //                        #region If Mode of Payemnt 306
+        //                        // ie Fi is avalible but no lc of cc attacheds
+        //                        else if (FiData.modeOfPayment == "306")
+        //                        {
+        //                            DateTime gdDate = gd.GDDate.Value;
+        //                            if (false)
+        //                            {
+        //                                int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                                if (x > 0)
+        //                                {
+        //                                    gdDate = gd.BLDateVale.Value;
+        //                                }
+        //                            }
+        //                            try
+        //                            {
+        //                                GdV20Dates.AddRange(V20Logics.GetV20Date(FiData.Id, gd.Id, FiData.finInsUniqueNumber, gd.totalDeclaredValue.Value, 0, 0, 0, 0, 0, FiData.modeOfPayment, FiData.FiCertifcationdate, 0, gdDate, gd.BLDateVale, item.ModeOFPayment, gd.gdNumber, gd.GDDate.Value));
+        //                            }
+        //                            catch
+        //                            {
+        //                                continue;
+        //                            }
+        //                        }
+        //                        #endregion If Mode of Payemnt 306
+        //                        #region useless code
+        //                        //#region If Mode of Payemnt 305
+        //                        //// ie Fi is not avalible in gd
+        //                        //else if (FiData.modeOfPayment == "305")
+        //                        //{
+        //                        //    DateTime gdDate = gd.GDDate.Value;
+        //                        //    if (false)
+        //                        //    {
+        //                        //        int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                        //        if (x > 0)
+        //                        //        {
+        //                        //            gdDate = gd.BLDateVale.Value;
+        //                        //        }
+        //                        //    }
+        //                        //    gdDate = gdDate.AddDays(45);
+        //                        //    GdV20Dates.Add(new GD_FI_Link()
+        //                        //    {
+        //                        //        GdId = gd.Id,
+        //                        //        FiId = FiData.Id,
+        //                        //        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
+        //                        //        _MatruityDate = gdDate
+        //                        //    });
+        //                        //}
+        //                        //#endregion If Mode of Payemnt 305
+        //                        #endregion useless code
+        //                    }
+        //                    #region If Mode of Payemnt 305
+        //                    else if (item.ModeOFPayment == "305")
+        //                    {
+
+        //                        // Coment as 305 will be handled by Lodgment and dosent Requrier Fi to be atttached
+
+
+        //                        //FiData = lstfis.Where(x => x.openAccountGdNumber == gd.gdNumber).FirstOrDefault();
+
+        //                        //DateTime gdDate = gd.GDDate.Value;
+        //                        //if (false)
+        //                        //{
+        //                        //    int x = DateTime.Compare(gd.BLDateVale.Value, gd.GDDate.Value);
+        //                        //    if (x > 0)
+        //                        //    {
+        //                        //        gdDate = gd.BLDateVale.Value;
+        //                        //    }
+        //                        //}
+        //                        //gdDate = gdDate.AddDays(45);
+        //                        //if (FiData != null)
+        //                        //{
+
+        //                        //    GdV20Dates.Add(new GD_FI_Link()
+        //                        //    {
+        //                        //        GdId = gd.Id,
+        //                        //        FiId = FiData == null ? null : FiData.Id,
+        //                        //        type = "Open Account",
+        //                        //        MatruityDate = gdDate.ToString("dd-MMM-yyy"),
+        //                        //        _MatruityDate = gdDate
+        //                        //    });
+        //                        //    OpengdIds.Add(gd.Id);
+
+        //                        //}
+
+
+        //                    }
+        //                    #endregion  If Mode of Payemnt 305
+        //                    else
+        //                    {
+        //                        //GdV20Dates.Add(new GD_FI_Link()
+        //                        //{
+        //                        //    GdId = gd.Id,
+        //                        //    //    GDNumber = gd.gdNumber,
+        //                        //    //    FINumber = item.FiNumber + " - Not in FI File"
+        //                        //});
+        //                    }
+        //                }
+        //            }
+        //            if (!GdV20Dates.IsNullOrEmpty())
+        //            {
+
+
+
+        //            }
+        //            V20Dates.AddRange(GdV20Dates);
+        //        }
+        //        CustomRepo.InsertFI_GD_Link(V20Dates);
+        //        // CustomRepo.RemoveLinkFI_GD_Link(OpengdIds);
+        //        return "Success";
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Seriloger.LoggerInstance.Error($"Error In Sync New Gds :{ex.Message}");
+        //        return $"Error :{ex.Message}";
+        //    }
+        //}
 
 
 
@@ -674,35 +671,228 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 // Group GDs by FI Unique Number
 
+                //var figdLink = context.FinancialInstrumentImports
+                //.Include(figd => figd.GdFiLinks)
+                //    .ThenInclude(fi => fi!.Gd)
+                //.Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)))
+                //.ToList();
+
+                var gdfiLink = context.GoodsDeclarationImports
+                .Include(gd => gd.GdFiLinks)
+                    .ThenInclude(gdfi => gdfi!.Fi)
+                .Where(gd => gd.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GdFiLinks.Count() > 1)
+                .ToList();
+
                 var figdLink = context.FinancialInstrumentImports
                 .Include(figd => figd.GdFiLinks)
                     .ThenInclude(fi => fi!.Gd)
-                .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)))
+                .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GdFiLinks.Count() >= 1)
                 .ToList();
 
-                List<FiGds> groupedFiGds = figdLink.Select(figdLink => new FiGds
+                List<ComparisonInput> groupedFiGds = figdLink.Select(figdLink => new ComparisonInput
                 {
-                    FiPayload = figdLink.Payload ?? string.Empty,
-                    FiId = figdLink.Id,
-                    Gds = figdLink.GdFiLinks.Select(gds => new Gd { GdPayload = gds.Gd!.Payload ?? string.Empty, GdFiId = gds.Id }).ToList() ?? []
+                    Payload = figdLink.Payload ?? string.Empty,
+                    Id = figdLink.Id,
+                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.FI,
+                    RelatedRecords = figdLink.GdFiLinks.Select(figd => new RelatedRecord{ Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
                 }).ToList();
 
-                if (groupedFiGds.Count == 0)
+
+                List<ComparisonInput> groupedGdFis = gdfiLink.Select(gd => new ComparisonInput
+                {
+                    Payload = gd.Payload ?? string.Empty,
+                    Id = gd.Id,
+                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.GD,
+                    RelatedRecords = gd.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
+                }).ToList();
+
+                if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
                 {
                     Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
                     return "No Matches";
                 }
 
                 // Perform Comparison for each FI with its related GDs
-                List<ComparisonResult> comparisonResults = [];
-
+                List<ValidateIqBizLogic.Comparison_V2.ComparisonResult> comparisonResults = [];
                 comparisonResults.AddRange(
-                    Compression.CompareGdAndFi(
-                        groupedFiGds,
-                        comparatorSettings,
-                        11 // RequestStatusId
-                    )
+                    Comparison_V2.CompareGdAndFi(groupedFiGds, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Import).ToList(), 3, ComparisonType.Import)
                 );
+                comparisonResults.AddRange(
+                    Comparison_V2.CompareGdAndFi(groupedGdFis, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Import).ToList(), 3, ComparisonType.Import)
+                );
+
+                //comparisonResults.AddRange(
+                //    Compression.CompareGdAndFi(
+                //        groupedFiGds,
+                //        comparatorSettings,
+                //        11 // RequestStatusId
+                //    )
+                //);
+
+                CustomRepo.InsertFI_GD_ComparisonResult(comparisonResults);
+                return "Success";
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error($"Error In Sync New Gds :{ex.Message}");
+                return $"Error :{ex.Message}";
+            }
+        }
+        public static string SyncNewGd(long fileId, NewFiGdFilterModel fis_OpenGds)
+        {
+            try
+            {
+                Seriloger.LoggerInstance.Information($" Sync New Gds In Process.... :");
+
+                ExportOverDueContext context = new ExportOverDueContext();
+                List<ComparatorSetting> comparatorSettings = context.ComparatorSettings.ToList();
+                List<GD_FI_Link> Link = [];
+                List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForLink(AppSettings.TenantId, fileId).ToList();//gd that newly came in 
+
+                List<string?> gdNums = lstgds.Select(g => g.gdNumber)
+                    .Distinct()
+                    .ToList();
+
+                if (lstgds.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Gds To Sync");
+
+                    return "No Gds";
+                }
+                List<DBmodels.FinancialInstrument> lstfis = CustomRepo.GetFinancialInstrumentForExportForLink(gdNums ,AppSettings.TenantId, fis_OpenGds).ToList();
+                if (lstfis.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Fis To Sync");
+
+                    return "No Fis";
+                }
+
+                foreach (var gd in lstgds)
+                {
+                    //if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
+                    //{
+                    List<DBmodels.FinancialInstrument> fiData = [];
+
+                    fiData = lstfis
+                        .Where(x => x.finInsUniqueNumber != null 
+                            && gd.finInsUniqueNumber != null 
+                            && x.finInsUniqueNumber == gd.finInsUniqueNumber
+                        )
+                        //.OrderByDescending(x => x.TransmissionDate)
+                        .ToList();
+
+                    if ((fiData is null || fiData.Count == 0) 
+                        //&& gd.modeOfPayment == "302"
+                        )
+                    {
+                        fiData = lstfis
+                            .Where(x => x.openAccountGdNumber != null
+                                && gd.gdNumber != null
+                                && x.openAccountGdNumber == gd.gdNumber
+                            )
+                            //.OrderByDescending(x => x.TransmissionDate)
+                            .ToList();
+                    }
+
+                    //if (FiData != null)
+                    //{
+                    foreach (var fi in fiData ?? [])
+                    {
+                        Link.Add(new GD_FI_Link()
+                        {
+                            type = "Export",
+                            GdId = gd.Id,
+                            FiId = fi.Id,
+                            //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
+                            CreationTime = DateTime.UtcNow,
+                            IsDeleted = false,
+                            //RequestStatusId = 12,
+                            TenantId = AppSettings.TenantId
+                        });
+                    }
+                    //}
+                //}
+                }
+                CustomRepo.InsertFI_GD_Link(Link);
+
+
+                var gdfilinkIds = Link.Select(link => link.Id);
+
+                var gdfiLink = context.GoodsDeclaration
+                .Include(gd => gd.GD_FI_Links)
+                    .ThenInclude(gdfi => gdfi!.Fi)
+                .Where(gd => gd.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GD_FI_Links.Count() > 1)
+                .ToList();
+
+                var figdLink = context.FinancialInstrument
+                .Include(figd => figd.GD_FI_Links)
+                    .ThenInclude(fi => fi!.Gd)
+                .Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GD_FI_Links.Count() >= 1)
+                .ToList();
+
+                List<ComparisonInput> groupedFiGds = figdLink.Select(figdLink => new ComparisonInput
+                {
+                    Payload = figdLink.PAYLOAD ?? string.Empty,
+                    Id = figdLink.Id,
+                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.FI,
+                    RelatedRecords = figdLink.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
+                }).ToList();
+
+
+                List<ComparisonInput> groupedGdFis = gdfiLink.Select(gd => new ComparisonInput
+                {
+                    Payload = gd.PAYLOAD ?? string.Empty,
+                    Id = gd.Id,
+                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.GD,
+                    RelatedRecords = gd.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
+                }).ToList();
+
+                if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
+                    return "No Matches";
+                }
+
+                // Perform Comparison for each FI with its related GDs
+                List<ValidateIqBizLogic.Comparison_V2.ComparisonResult> comparisonResults = [];
+                comparisonResults.AddRange(
+                    Comparison_V2.CompareGdAndFi(groupedFiGds, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Export).ToList(), 3, ComparisonType.Export)
+                );
+                comparisonResults.AddRange(
+                    Comparison_V2.CompareGdAndFi(groupedGdFis, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Export).ToList(), 3, ComparisonType.Export)
+                );
+
+                // Group GDs by FI Unique Number
+
+                //var figdLink = context.FinancialInstrument
+                //.Include(figd => figd.GD_FI_Links)
+                //    .ThenInclude(fi => fi!.Gd)
+                //.Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)))
+                //.ToList();
+
+                //List<FiGds> groupedFiGds = figdLink.Select(figdLink => new FiGds
+                //{
+                //    FiPayload = figdLink.PAYLOAD ?? string.Empty,
+                //    FiId = figdLink.Id,
+                //    Gds = figdLink.GD_FI_Links.Select(gds => new Gd { GdPayload = gds.Gd!.PAYLOAD ?? string.Empty, GdFiId = gds.Id }).ToList() ?? []
+                //}).ToList();
+
+                //if (groupedFiGds.Count == 0)
+                //{
+                //    Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
+                //    return "No Matches";
+                //}
+
+                // Perform Comparison for each FI with its related GDs
+                //List<ComparisonResult> comparisonResults = [];
+
+                //comparisonResults.AddRange(
+                //    Compression.CompareGdAndFi(
+                //        groupedFiGds,
+                //        comparatorSettings,
+                //        11 // RequestStatusId
+                //    )
+                //);
                 CustomRepo.InsertFI_GD_ComparisonResult(comparisonResults);
                 return "Success";
             }
@@ -784,35 +974,235 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 // Group GDs by FI Unique Number
 
+                var gdfiLink = context.GoodsDeclarationImports
+                .Include(gd => gd.GdFiLinks)
+                    .ThenInclude(gdfi => gdfi!.Fi)
+                .Where(gd => gd.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GdFiLinks.Count() > 1)
+                .ToList();
+
                 var figdLink = context.FinancialInstrumentImports
                 .Include(figd => figd.GdFiLinks)
                     .ThenInclude(fi => fi!.Gd)
-                .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)))
+                .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GdFiLinks.Count() >= 1)
                 .ToList();
 
-                List<FiGds> groupedFiGds = figdLink.Select(figdLink => new FiGds
+                List<ComparisonInput> groupedFiGds = figdLink.Select(figdLink => new ComparisonInput
                 {
-                    FiPayload = figdLink.Payload ?? string.Empty,
-                    FiId = figdLink.Id,
-                    Gds = figdLink.GdFiLinks.Select(gds => new Gd { GdPayload = gds.Gd!.Payload ?? string.Empty, GdFiId = gds.Id }).ToList() ?? []
+                    Payload = figdLink.Payload ?? string.Empty,
+                    Id = figdLink.Id,
+                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.FI,
+                    RelatedRecords = figdLink.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
                 }).ToList();
 
-                if (groupedFiGds.Count == 0)
+
+                List<ComparisonInput> groupedGdFis = gdfiLink.Select(gd => new ComparisonInput
+                {
+                    Payload = gd.Payload ?? string.Empty,
+                    Id = gd.Id,
+                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.GD,
+                    RelatedRecords = gd.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
+                }).ToList();
+
+                if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
                 {
                     Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
                     return "No Matches";
                 }
 
                 // Perform Comparison for each FI with its related GDs
-                List<ComparisonResult> comparisonResults = [];
-                
+                List<ValidateIqBizLogic.Comparison_V2.ComparisonResult> comparisonResults = [];
                 comparisonResults.AddRange(
-                    Compression.CompareGdAndFi(
-                        groupedFiGds,
-                        comparatorSettings,
-                        11 // RequestStatusId
-                    )
+                    Comparison_V2.CompareGdAndFi(groupedFiGds, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Import).ToList(), 3, ComparisonType.Import)
                 );
+                comparisonResults.AddRange(
+                    Comparison_V2.CompareGdAndFi(groupedGdFis, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Import).ToList(), 3, ComparisonType.Import)
+                );
+
+                //var figdLink = context.FinancialInstrumentImports
+                //.Include(figd => figd.GdFiLinks)
+                //    .ThenInclude(fi => fi!.Gd)
+                //.Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)))
+                //.ToList();
+
+                //List<FiGds> groupedFiGds = figdLink.Select(figdLink => new FiGds
+                //{
+                //    FiPayload = figdLink.Payload ?? string.Empty,
+                //    FiId = figdLink.Id,
+                //    Gds = figdLink.GdFiLinks.Select(gds => new Gd { GdPayload = gds.Gd!.Payload ?? string.Empty, GdFiId = gds.Id }).ToList() ?? []
+                //}).ToList();
+
+                //if (groupedFiGds.Count == 0)
+                //{
+                //    Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
+                //    return "No Matches";
+                //}
+
+                // Perform Comparison for each FI with its related GDs
+                //List<ComparisonResult> comparisonResults = [];
+
+                //comparisonResults.AddRange(
+                //    Compression.CompareGdAndFi(
+                //        groupedFiGds,
+                //        comparatorSettings,
+                //        11 // RequestStatusId
+                //    )
+                //);
+                CustomRepo.InsertFI_GD_ComparisonResult(comparisonResults);
+
+                return "Success";
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error($"Error In Sync New Gds :{ex.Message}");
+                return $"Error :{ex.Message}";
+            }
+        }
+
+        public static string SyncNewFi(long fileId, NewFiGdFilterModel fis_OpenGds)
+        {
+            try
+            {
+                ExportOverDueContext context = new ExportOverDueContext();
+                List<ComparatorSetting> comparatorSettings = context.ComparatorSettings.ToList();
+                List<GD_FI_Link> links = [];
+                List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForLink(fis_OpenGds, AppSettings.TenantId)
+                    .DistinctBy(gd => gd.Id)
+                    .ToList();//gd that newly came in 
+
+                if (lstgds.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Gds To Sync");
+
+                    return "No Gds";
+                }
+                var lstfis = CustomRepo.GetFinancialInstrumentForLink(AppSettings.TenantId, fileId).ToList();
+                if (lstfis.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Fis To Sync");
+
+                    return "No Fis";
+                }
+
+                foreach (var gd in lstgds)
+                {
+                    //if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
+                    //{
+                    //var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).FirstOrDefault();
+                    List<DBmodels.FinancialInstrument> fiData = [];
+
+                    fiData = lstfis
+                        .Where(x => x.finInsUniqueNumber != null
+                            && gd.finInsUniqueNumber != null
+                            && x.finInsUniqueNumber == gd.finInsUniqueNumber
+                        )
+                        //.OrderByDescending(x => x.TransmissionDate)
+                        .ToList();
+
+                    if ((fiData is null || fiData.Count == 0) && gd.modeOfPayment == "302")
+                    {
+                        fiData = lstfis
+                            .Where(x => x.openAccountGdNumber != null
+                                && gd.gdNumber != null
+                                && x.openAccountGdNumber == gd.gdNumber
+                            )
+                            //.OrderByDescending(x => x.TransmissionDate)
+                            .ToList();
+                    }
+
+                    foreach (var fi in fiData ?? [])
+                    {
+                        links.Add(new GD_FI_Link()
+                        {
+                            type = "Export",
+                            GdId = gd.Id,
+                            FiId = fi.Id,
+                            //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
+                            CreationTime = DateTime.Now,
+                            IsDeleted = false,
+                            //RequestStatusId = 12,
+                            TenantId = AppSettings.TenantId
+                        });
+                    }
+                }
+                CustomRepo.InsertFI_GD_Link(links);
+
+                var gdfilinkIds = links.Select(link => link.Id);
+
+                // Group GDs by FI Unique Number
+
+                var gdfiLink = context.GoodsDeclaration
+                .Include(gd => gd.GD_FI_Links)
+                    .ThenInclude(gdfi => gdfi!.Fi)
+                .Where(gd => gd.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GD_FI_Links.Count() > 1)
+                .ToList();
+
+                var figdLink = context.FinancialInstrument
+                .Include(figd => figd.GD_FI_Links)
+                    .ThenInclude(fi => fi!.Gd)
+                .Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GD_FI_Links.Count() >= 1)
+                .ToList();
+
+                List<ComparisonInput> groupedFiGds = figdLink.Select(figdLink => new ComparisonInput
+                {
+                    Payload = figdLink.PAYLOAD ?? string.Empty,
+                    Id = figdLink.Id,
+                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.FI,
+                    RelatedRecords = figdLink.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
+                }).ToList();
+
+
+                List<ComparisonInput> groupedGdFis = gdfiLink.Select(gd => new ComparisonInput
+                {
+                    Payload = gd.PAYLOAD ?? string.Empty,
+                    Id = gd.Id,
+                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.GD,
+                    RelatedRecords = gd.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
+                }).ToList();
+
+                if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
+                {
+                    Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
+                    return "No Matches";
+                }
+
+                // Perform Comparison for each FI with its related GDs
+                List<ValidateIqBizLogic.Comparison_V2.ComparisonResult> comparisonResults = [];
+                comparisonResults.AddRange(
+                    Comparison_V2.CompareGdAndFi(groupedFiGds, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Export).ToList(), 3, ComparisonType.Export)
+                );
+                comparisonResults.AddRange(
+                    Comparison_V2.CompareGdAndFi(groupedGdFis, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Export).ToList(), 3, ComparisonType.Export)
+                );
+
+                //var figdLink = context.FinancialInstrument
+                //.Include(figd => figd.GD_FI_Links)
+                //    .ThenInclude(fi => fi!.Gd)
+                //.Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)))
+                //.ToList();
+
+                //List<FiGds> groupedFiGds = figdLink.Select(figdLink => new FiGds
+                //{
+                //    FiPayload = figdLink.PAYLOAD ?? string.Empty,
+                //    FiId = figdLink.Id,
+                //    Gds = figdLink.GD_FI_Links.Select(gds => new Gd { GdPayload = gds.Gd!.PAYLOAD ?? string.Empty, GdFiId = gds.Id }).ToList() ?? []
+                //}).ToList();
+
+                //if (groupedFiGds.Count == 0)
+                //{
+                //    Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
+                //    return "No Matches";
+                //}
+
+                // Perform Comparison for each FI with its related GDs
+                //List<ComparisonResult> comparisonResults = [];
+
+                //comparisonResults.AddRange(
+                //    Compression.CompareGdAndFi(
+                //        groupedFiGds,
+                //        comparatorSettings,
+                //        11 // RequestStatusId
+                //    )
+                //);
                 CustomRepo.InsertFI_GD_ComparisonResult(comparisonResults);
 
                 return "Success";

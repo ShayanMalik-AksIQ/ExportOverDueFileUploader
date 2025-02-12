@@ -44,11 +44,4 @@ public partial class ComparisonResult
     public virtual FinancialInstrumentImport? Fi { get; set; }
 
     public virtual RequestStatus? RequestStatus { get; set; }
-    public override string ToString()
-    {
-        return $"ComparisonType: {ComparisonType}, ComparisonName: {ComparisonName}, \n " +
-               $"Entity1Key: {Entity1Key}, Entity2Key: {Entity2Key}, \n " +
-               $"Entity1Value: {Entity1Value}, Entity2Value: {Entity2Value}, \n Result: {Result}, " +
-               $"GdFiLinkId: {GdFiLinkId}, Variance: {Variance}  \n \n";
-    }
 }

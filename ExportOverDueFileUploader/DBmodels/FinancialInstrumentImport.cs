@@ -1,4 +1,6 @@
-﻿namespace ExportOverDueFileUploader.DBmodels;
+﻿using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
+
+namespace ExportOverDueFileUploader.DBmodels;
 
 public partial class FinancialInstrumentImport
 {
@@ -50,5 +52,7 @@ public partial class FinancialInstrumentImport
 
     public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = [];
 
-    public IEnumerable<ComparisonResult>? ComparisonResults { get; set; }
+    //public IEnumerable<ComparisonResult>? ComparisonResults { get; set; }
+
+    public virtual ICollection<AggregiatedResultImport>? AggregiatedResultImports { get; set; }
 }
