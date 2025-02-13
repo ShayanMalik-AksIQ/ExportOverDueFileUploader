@@ -590,18 +590,19 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         //}
 
 
-
+        //Syncs good declaration import with fis in import, sends the result to the comparison algo for the computation of gi and fi comparison.
         public static string SyncNewImportGd(long fileId, NewFiGdFilterModel fis_OpenGds)
         {
             try
             {
                 Seriloger.LoggerInstance.Information($" Sync New Gds In Process.... :");
 
-                ExportOverDueContext context = new ExportOverDueContext();
+                ExportOverDueContext context = new();
                 List<ComparatorSetting> comparatorSettings = context.ComparatorSettings.ToList();
-                List<GdFiLink> Link = new List<GdFiLink>();
+                List<GdFiLink> Link = [];
                 List<GoodsDeclarationImport> lstgds = CustomRepo.GetGoodsDeclarationImportForLink(AppSettings.TenantId, fileId).ToList();//gd that newly came in 
 
+                //Select the list of all the goods declaration that came in to get records for open account fi's.
                 List<string?> gdNums = lstgds.Select(g => g.gdNumber)
                     .Distinct()
                     .ToList();
@@ -612,6 +613,8 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                     return "No Gds";
                 }
+
+                //Gets the open account fis and fis that newly camein.
                 List<FinancialInstrumentImport> lstfis = CustomRepo.GetFinancialInstrumentForImportForLink(gdNums ,AppSettings.TenantId, fis_OpenGds).ToList();
                 if (lstfis.Count == 0)
                 {
@@ -622,10 +625,9 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 foreach (var gd in lstgds)
                 {
-                    //if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
-                    //{
                     List<FinancialInstrumentImport> fiData = [];
 
+                    //Gets the gds for fi either by matching fi number or by matching of the open acc gd number with gd's number.
                     fiData = lstfis
                         .Where(x => x.FinInsUniqueNumber != null 
                             && gd.FinInsUniqueNumber != null 
@@ -645,8 +647,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             .ToList();
                     }
 
-                    //if (FiData != null)
-                    //{
+                    //Inserts the fi and gd link for gd and fi
                     foreach (var fi in fiData ?? [])
                     {
                         Link.Add(new GdFiLink()
@@ -654,57 +655,43 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             Type = "Import",
                             GdId = gd.Id,
                             FiId = fi.Id,
-                            //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
                             CreationTime = DateTime.Now,
                             IsDeleted = false,
                             RequestStatusId = 12,
                             TenantId = AppSettings.TenantId
                         });
                     }
-                    //}
-                //}
                 }
                 CustomRepo.InsertFI_GD_Link(Link);
 
 
                 var gdfilinkIds = Link.Select(link => link.Id);
 
-                // Group GDs by FI Unique Number
+                //Get the base fi and its multiple gds for comaparison.
+                List<ComparisonInput> groupedFiGds = context.FinancialInstrumentImports
+                    .Include(figd => figd.GdFiLinks)
+                        .ThenInclude(fi => fi!.Gd)
+                    .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GdFiLinks.Count() >= 1)
+                    .Select(figdLink => new ComparisonInput
+                    {
+                        Payload = figdLink.Payload ?? string.Empty,
+                        Id = figdLink.Id,
+                        Type = DocumentType.FI,
+                        RelatedRecords = figdLink.GdFiLinks.Select(figd => new RelatedRecord{ Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
+                    }).ToList();
 
-                //var figdLink = context.FinancialInstrumentImports
-                //.Include(figd => figd.GdFiLinks)
-                //    .ThenInclude(fi => fi!.Gd)
-                //.Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)))
-                //.ToList();
-
-                var gdfiLink = context.GoodsDeclarationImports
-                .Include(gd => gd.GdFiLinks)
-                    .ThenInclude(gdfi => gdfi!.Fi)
-                .Where(gd => gd.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GdFiLinks.Count() > 1)
-                .ToList();
-
-                var figdLink = context.FinancialInstrumentImports
-                .Include(figd => figd.GdFiLinks)
-                    .ThenInclude(fi => fi!.Gd)
-                .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GdFiLinks.Count() >= 1)
-                .ToList();
-
-                List<ComparisonInput> groupedFiGds = figdLink.Select(figdLink => new ComparisonInput
-                {
-                    Payload = figdLink.Payload ?? string.Empty,
-                    Id = figdLink.Id,
-                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.FI,
-                    RelatedRecords = figdLink.GdFiLinks.Select(figd => new RelatedRecord{ Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
-                }).ToList();
-
-
-                List<ComparisonInput> groupedGdFis = gdfiLink.Select(gd => new ComparisonInput
-                {
-                    Payload = gd.Payload ?? string.Empty,
-                    Id = gd.Id,
-                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.GD,
-                    RelatedRecords = gd.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
-                }).ToList();
+                //Gets the base gd and its multiple fi for comparison.
+                List<ComparisonInput> groupedGdFis = context.GoodsDeclarationImports
+                    .Include(gd => gd.GdFiLinks)
+                        .ThenInclude(gdfi => gdfi!.Fi)
+                    .Where(gd => gd.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GdFiLinks.Count() > 1)
+                    .Select(gd => new ComparisonInput
+                    {
+                        Payload = gd.Payload ?? string.Empty,
+                        Id = gd.Id,
+                        Type = DocumentType.GD,
+                        RelatedRecords = gd.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
+                    }).ToList();
 
                 if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
                 {
@@ -717,17 +704,11 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                 comparisonResults.AddRange(
                     Comparison_V2.CompareGdAndFi(groupedFiGds, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Import).ToList(), 3, ComparisonType.Import)
                 );
+
+                //Performs the comparison for each gd with its multiple fis.
                 comparisonResults.AddRange(
                     Comparison_V2.CompareGdAndFi(groupedGdFis, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Import).ToList(), 3, ComparisonType.Import)
                 );
-
-                //comparisonResults.AddRange(
-                //    Compression.CompareGdAndFi(
-                //        groupedFiGds,
-                //        comparatorSettings,
-                //        11 // RequestStatusId
-                //    )
-                //);
 
                 CustomRepo.InsertFI_GD_ComparisonResult(comparisonResults);
                 return "Success";
@@ -744,7 +725,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
             {
                 Seriloger.LoggerInstance.Information($" Sync New Gds In Process.... :");
 
-                ExportOverDueContext context = new ExportOverDueContext();
+                ExportOverDueContext context = new();
                 List<ComparatorSetting> comparatorSettings = context.ComparatorSettings.ToList();
                 List<GD_FI_Link> Link = [];
                 List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForLink(AppSettings.TenantId, fileId).ToList();//gd that newly came in 
@@ -769,8 +750,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 foreach (var gd in lstgds)
                 {
-                    //if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
-                    //{
                     List<DBmodels.FinancialInstrument> fiData = [];
 
                     fiData = lstfis
@@ -778,11 +757,9 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             && gd.finInsUniqueNumber != null 
                             && x.finInsUniqueNumber == gd.finInsUniqueNumber
                         )
-                        //.OrderByDescending(x => x.TransmissionDate)
                         .ToList();
 
-                    if ((fiData is null || fiData.Count == 0) 
-                        //&& gd.modeOfPayment == "302"
+                    if ((fiData is null || fiData.Count == 0)
                         )
                     {
                         fiData = lstfis
@@ -790,12 +767,9 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 && gd.gdNumber != null
                                 && x.openAccountGdNumber == gd.gdNumber
                             )
-                            //.OrderByDescending(x => x.TransmissionDate)
                             .ToList();
                     }
 
-                    //if (FiData != null)
-                    //{
                     foreach (var fi in fiData ?? [])
                     {
                         Link.Add(new GD_FI_Link()
@@ -803,49 +777,40 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             type = "Export",
                             GdId = gd.Id,
                             FiId = fi.Id,
-                            //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
                             CreationTime = DateTime.UtcNow,
                             IsDeleted = false,
-                            //RequestStatusId = 12,
                             TenantId = AppSettings.TenantId
                         });
                     }
-                    //}
-                //}
                 }
                 CustomRepo.InsertFI_GD_Link(Link);
 
-
                 var gdfilinkIds = Link.Select(link => link.Id);
 
-                var gdfiLink = context.GoodsDeclaration
-                .Include(gd => gd.GD_FI_Links)
-                    .ThenInclude(gdfi => gdfi!.Fi)
-                .Where(gd => gd.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GD_FI_Links.Count() > 1)
-                .ToList();
-
-                var figdLink = context.FinancialInstrument
-                .Include(figd => figd.GD_FI_Links)
-                    .ThenInclude(fi => fi!.Gd)
-                .Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GD_FI_Links.Count() >= 1)
-                .ToList();
-
-                List<ComparisonInput> groupedFiGds = figdLink.Select(figdLink => new ComparisonInput
-                {
-                    Payload = figdLink.PAYLOAD ?? string.Empty,
-                    Id = figdLink.Id,
-                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.FI,
-                    RelatedRecords = figdLink.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
-                }).ToList();
+                List<ComparisonInput> groupedFiGds = context.FinancialInstrument
+                    .Include(figd => figd.GD_FI_Links)
+                        .ThenInclude(fi => fi!.Gd)
+                    .Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GD_FI_Links.Count() >= 1)
+                    .Select(figdLink => new ComparisonInput
+                    {
+                        Payload = figdLink.PAYLOAD ?? string.Empty,
+                        Id = figdLink.Id,
+                        Type = DocumentType.FI,
+                        RelatedRecords = figdLink.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
+                    }).ToList();
 
 
-                List<ComparisonInput> groupedGdFis = gdfiLink.Select(gd => new ComparisonInput
-                {
-                    Payload = gd.PAYLOAD ?? string.Empty,
-                    Id = gd.Id,
-                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.GD,
-                    RelatedRecords = gd.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
-                }).ToList();
+                List<ComparisonInput> groupedGdFis = context.GoodsDeclaration
+                    .Include(gd => gd.GD_FI_Links)
+                        .ThenInclude(gdfi => gdfi!.Fi)
+                    .Where(gd => gd.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GD_FI_Links.Count() > 1)
+                    .Select(gd => new ComparisonInput
+                    {
+                        Payload = gd.PAYLOAD ?? string.Empty,
+                        Id = gd.Id,
+                        Type = DocumentType.GD,
+                        RelatedRecords = gd.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
+                    }).ToList();
 
                 if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
                 {
@@ -862,37 +827,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     Comparison_V2.CompareGdAndFi(groupedGdFis, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Export).ToList(), 3, ComparisonType.Export)
                 );
 
-                // Group GDs by FI Unique Number
-
-                //var figdLink = context.FinancialInstrument
-                //.Include(figd => figd.GD_FI_Links)
-                //    .ThenInclude(fi => fi!.Gd)
-                //.Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)))
-                //.ToList();
-
-                //List<FiGds> groupedFiGds = figdLink.Select(figdLink => new FiGds
-                //{
-                //    FiPayload = figdLink.PAYLOAD ?? string.Empty,
-                //    FiId = figdLink.Id,
-                //    Gds = figdLink.GD_FI_Links.Select(gds => new Gd { GdPayload = gds.Gd!.PAYLOAD ?? string.Empty, GdFiId = gds.Id }).ToList() ?? []
-                //}).ToList();
-
-                //if (groupedFiGds.Count == 0)
-                //{
-                //    Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
-                //    return "No Matches";
-                //}
-
-                // Perform Comparison for each FI with its related GDs
-                //List<ComparisonResult> comparisonResults = [];
-
-                //comparisonResults.AddRange(
-                //    Compression.CompareGdAndFi(
-                //        groupedFiGds,
-                //        comparatorSettings,
-                //        11 // RequestStatusId
-                //    )
-                //);
                 CustomRepo.InsertFI_GD_ComparisonResult(comparisonResults);
                 return "Success";
             }
@@ -908,9 +842,9 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         {
             try
             {
-                ExportOverDueContext context = new ExportOverDueContext();
+                ExportOverDueContext context = new();
                 List<ComparatorSetting> comparatorSettings = context.ComparatorSettings.ToList();
-                List<GdFiLink> links = new List<GdFiLink>();
+                List<GdFiLink> links = [];
                 List<GoodsDeclarationImport> lstgds = CustomRepo.GetGoodsDeclarationImportForLink(fis_OpenGds, AppSettings.TenantId).DistinctBy(gd => gd.Id).ToList();//gd that newly came in 
 
                 if (lstgds.Count == 0)
@@ -929,9 +863,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 foreach (var gd in lstgds)
                 {
-                    //if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
-                    //{
-                    //var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).FirstOrDefault();
                     List<FinancialInstrumentImport> fiData = [];
 
                     fiData = lstfis
@@ -960,7 +891,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             Type = "Import",
                             GdId = gd.Id,
                             FiId = fi.Id,
-                            //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
                             CreationTime = DateTime.Now,
                             IsDeleted = false,
                             RequestStatusId = 12,
@@ -974,34 +904,30 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 // Group GDs by FI Unique Number
 
-                var gdfiLink = context.GoodsDeclarationImports
-                .Include(gd => gd.GdFiLinks)
-                    .ThenInclude(gdfi => gdfi!.Fi)
-                .Where(gd => gd.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GdFiLinks.Count() > 1)
-                .ToList();
-
-                var figdLink = context.FinancialInstrumentImports
-                .Include(figd => figd.GdFiLinks)
-                    .ThenInclude(fi => fi!.Gd)
-                .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GdFiLinks.Count() >= 1)
-                .ToList();
-
-                List<ComparisonInput> groupedFiGds = figdLink.Select(figdLink => new ComparisonInput
-                {
-                    Payload = figdLink.Payload ?? string.Empty,
-                    Id = figdLink.Id,
-                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.FI,
-                    RelatedRecords = figdLink.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
-                }).ToList();
+                List<ComparisonInput> groupedFiGds = context.FinancialInstrumentImports
+                    .Include(figd => figd.GdFiLinks)
+                        .ThenInclude(fi => fi!.Gd)
+                    .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GdFiLinks.Count() >= 1)
+                    .Select(figdLink => new ComparisonInput
+                    {
+                        Payload = figdLink.Payload ?? string.Empty,
+                        Id = figdLink.Id,
+                        Type = DocumentType.FI,
+                        RelatedRecords = figdLink.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
+                    }).ToList();
 
 
-                List<ComparisonInput> groupedGdFis = gdfiLink.Select(gd => new ComparisonInput
-                {
-                    Payload = gd.Payload ?? string.Empty,
-                    Id = gd.Id,
-                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.GD,
-                    RelatedRecords = gd.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
-                }).ToList();
+                List<ComparisonInput> groupedGdFis = context.GoodsDeclarationImports
+                    .Include(gd => gd.GdFiLinks)
+                        .ThenInclude(gdfi => gdfi!.Fi)
+                    .Where(gd => gd.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GdFiLinks.Count() > 1)
+                    .Select(gd => new ComparisonInput
+                    {
+                        Payload = gd.Payload ?? string.Empty,
+                        Id = gd.Id,
+                        Type = DocumentType.GD,
+                        RelatedRecords = gd.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
+                    }).ToList();
 
                 if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
                 {
@@ -1018,35 +944,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     Comparison_V2.CompareGdAndFi(groupedGdFis, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Import).ToList(), 3, ComparisonType.Import)
                 );
 
-                //var figdLink = context.FinancialInstrumentImports
-                //.Include(figd => figd.GdFiLinks)
-                //    .ThenInclude(fi => fi!.Gd)
-                //.Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)))
-                //.ToList();
-
-                //List<FiGds> groupedFiGds = figdLink.Select(figdLink => new FiGds
-                //{
-                //    FiPayload = figdLink.Payload ?? string.Empty,
-                //    FiId = figdLink.Id,
-                //    Gds = figdLink.GdFiLinks.Select(gds => new Gd { GdPayload = gds.Gd!.Payload ?? string.Empty, GdFiId = gds.Id }).ToList() ?? []
-                //}).ToList();
-
-                //if (groupedFiGds.Count == 0)
-                //{
-                //    Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
-                //    return "No Matches";
-                //}
-
-                // Perform Comparison for each FI with its related GDs
-                //List<ComparisonResult> comparisonResults = [];
-
-                //comparisonResults.AddRange(
-                //    Compression.CompareGdAndFi(
-                //        groupedFiGds,
-                //        comparatorSettings,
-                //        11 // RequestStatusId
-                //    )
-                //);
                 CustomRepo.InsertFI_GD_ComparisonResult(comparisonResults);
 
                 return "Success";
@@ -1062,7 +959,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
         {
             try
             {
-                ExportOverDueContext context = new ExportOverDueContext();
+                ExportOverDueContext context = new();
                 List<ComparatorSetting> comparatorSettings = context.ComparatorSettings.ToList();
                 List<GD_FI_Link> links = [];
                 List<GoodsDeclaration> lstgds = CustomRepo.GetGoodsDeclarationForLink(fis_OpenGds, AppSettings.TenantId)
@@ -1085,9 +982,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 foreach (var gd in lstgds)
                 {
-                    //if (!gd.FinInsUniqueNumber.IsNullOrEmpty())
-                    //{
-                    //var FiData = lstfis.Where(x => x.FinInsUniqueNumber == gd.FinInsUniqueNumber).FirstOrDefault();
                     List<DBmodels.FinancialInstrument> fiData = [];
 
                     fiData = lstfis
@@ -1095,7 +989,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             && gd.finInsUniqueNumber != null
                             && x.finInsUniqueNumber == gd.finInsUniqueNumber
                         )
-                        //.OrderByDescending(x => x.TransmissionDate)
                         .ToList();
 
                     if ((fiData is null || fiData.Count == 0) && gd.modeOfPayment == "302")
@@ -1105,7 +998,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                                 && gd.gdNumber != null
                                 && x.openAccountGdNumber == gd.gdNumber
                             )
-                            //.OrderByDescending(x => x.TransmissionDate)
                             .ToList();
                     }
 
@@ -1116,10 +1008,8 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             type = "Export",
                             GdId = gd.Id,
                             FiId = fi.Id,
-                            //ComparisonResults = Compression.CompareGdAndFi(gd.Payload, fi.Payload, comparatorSettings, 11),
                             CreationTime = DateTime.Now,
                             IsDeleted = false,
-                            //RequestStatusId = 12,
                             TenantId = AppSettings.TenantId
                         });
                     }
@@ -1130,34 +1020,30 @@ namespace ExportOverDueFileUploader.MatuirtyBO
 
                 // Group GDs by FI Unique Number
 
-                var gdfiLink = context.GoodsDeclaration
-                .Include(gd => gd.GD_FI_Links)
-                    .ThenInclude(gdfi => gdfi!.Fi)
-                .Where(gd => gd.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GD_FI_Links.Count() > 1)
-                .ToList();
-
-                var figdLink = context.FinancialInstrument
-                .Include(figd => figd.GD_FI_Links)
-                    .ThenInclude(fi => fi!.Gd)
-                .Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GD_FI_Links.Count() >= 1)
-                .ToList();
-
-                List<ComparisonInput> groupedFiGds = figdLink.Select(figdLink => new ComparisonInput
-                {
-                    Payload = figdLink.PAYLOAD ?? string.Empty,
-                    Id = figdLink.Id,
-                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.FI,
-                    RelatedRecords = figdLink.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
-                }).ToList();
+                List<ComparisonInput> groupedFiGds = context.FinancialInstrument
+                    .Include(figd => figd.GD_FI_Links)
+                        .ThenInclude(fi => fi!.Gd)
+                    .Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GD_FI_Links.Count() >= 1)
+                    .Select(figdLink => new ComparisonInput
+                    {
+                        Payload = figdLink.PAYLOAD ?? string.Empty,
+                        Id = figdLink.Id,
+                        Type = DocumentType.FI,
+                        RelatedRecords = figdLink.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
+                    }).ToList();
 
 
-                List<ComparisonInput> groupedGdFis = gdfiLink.Select(gd => new ComparisonInput
-                {
-                    Payload = gd.PAYLOAD ?? string.Empty,
-                    Id = gd.Id,
-                    Type = ValidateIqBizLogic.Comparison_V2.DocumentType.GD,
-                    RelatedRecords = gd.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
-                }).ToList();
+                List<ComparisonInput> groupedGdFis = context.GoodsDeclaration
+                    .Include(gd => gd.GD_FI_Links)
+                        .ThenInclude(gdfi => gdfi!.Fi)
+                    .Where(gd => gd.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GD_FI_Links.Count() > 1)
+                    .Select(gd => new ComparisonInput
+                    {
+                        Payload = gd.PAYLOAD ?? string.Empty,
+                        Id = gd.Id,
+                        Type = DocumentType.GD,
+                        RelatedRecords = gd.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
+                    }).ToList();
 
                 if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
                 {
@@ -1174,35 +1060,6 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     Comparison_V2.CompareGdAndFi(groupedGdFis, comparatorSettings.Where(cs => cs.ModuleId == (int)ComparisonType.Export).ToList(), 3, ComparisonType.Export)
                 );
 
-                //var figdLink = context.FinancialInstrument
-                //.Include(figd => figd.GD_FI_Links)
-                //    .ThenInclude(fi => fi!.Gd)
-                //.Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)))
-                //.ToList();
-
-                //List<FiGds> groupedFiGds = figdLink.Select(figdLink => new FiGds
-                //{
-                //    FiPayload = figdLink.PAYLOAD ?? string.Empty,
-                //    FiId = figdLink.Id,
-                //    Gds = figdLink.GD_FI_Links.Select(gds => new Gd { GdPayload = gds.Gd!.PAYLOAD ?? string.Empty, GdFiId = gds.Id }).ToList() ?? []
-                //}).ToList();
-
-                //if (groupedFiGds.Count == 0)
-                //{
-                //    Seriloger.LoggerInstance.Information($"No Matching GDs Found for FIs");
-                //    return "No Matches";
-                //}
-
-                // Perform Comparison for each FI with its related GDs
-                //List<ComparisonResult> comparisonResults = [];
-
-                //comparisonResults.AddRange(
-                //    Compression.CompareGdAndFi(
-                //        groupedFiGds,
-                //        comparatorSettings,
-                //        11 // RequestStatusId
-                //    )
-                //);
                 CustomRepo.InsertFI_GD_ComparisonResult(comparisonResults);
 
                 return "Success";
