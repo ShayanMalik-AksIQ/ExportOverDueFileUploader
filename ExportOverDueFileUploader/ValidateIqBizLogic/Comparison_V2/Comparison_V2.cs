@@ -266,16 +266,20 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
                     .GroupBy(token => token["hsCode"]?.ToString())
                     .ToDictionary(group => group.Key!, group => group.ToList());
 
+                // Keep track of hsCodes encountered in Tokens1
+                var tokens1HsCodes = new HashSet<string>();
+
                 foreach (var token1 in Tokens1)
                 {
                     var hsCode1 = token1["hsCode"]?.ToString();
                     if (hsCode1 == null || !tokens2Map.TryGetValue(hsCode1, out var matchingTokens2))
                     {
+                        int match = BaseFeild == DocumentType.FI.ToString() ? 1 : 0;
                         // If hscode does not match terminate further processing for same hscode of base field and add result to result list.
-                        result.Add(GetResult(setting, ReqStatusId, fId, gId, figdId, BaseFeild, hsCode1, null, 0, 0, "hscode", comparisonType));
+                        result.Add(GetResult(setting, ReqStatusId, fId, gId, figdId, BaseFeild, hsCode1, null, match, null, "hscode", comparisonType));
                         continue;
                     }
-
+                    tokens1HsCodes.Add(hsCode1);
                     // Iterate over matching tokens with the same hsCode
                     foreach (var token2 in matchingTokens2)
                     {
@@ -336,6 +340,17 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
                     }
                 }
 
+                foreach (var token2 in Tokens2)
+                {
+                    var hsCode2 = token2["hsCode"]?.ToString();
+                    if (hsCode2 is not null && !tokens1HsCodes.Contains(hsCode2))
+                    {
+                        int match = BaseFeild == DocumentType.FI.ToString() ? 0 : 1;
+                        // Add result for unmatched hsCodes from Tokens2
+                        result.Add(GetResult(setting, ReqStatusId, fId, gId, figdId, BaseFeild, null, hsCode2, match, null, "hscode", comparisonType));
+                    }
+                }
+
                 return result;
             }
             catch (Exception ex)
@@ -378,8 +393,8 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
                     gId,
                     figdId,
                     BaseFeild,
-                    values1,
-                    values2,
+                    values1?.Count(),
+                    values2?.Count(),
                     Comparision.Result,
                     Comparision.Variance,
                     "itemcount",
