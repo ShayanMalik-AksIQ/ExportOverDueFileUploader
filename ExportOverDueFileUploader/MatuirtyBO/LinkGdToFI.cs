@@ -672,12 +672,13 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     .Include(figd => figd.GdFiLinks)
                         .ThenInclude(fi => fi!.Gd)
                     .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GdFiLinks.Count() >= 1)
+                    .AsEnumerable()
                     .Select(figdLink => new ComparisonInput
                     {
                         Payload = figdLink.Payload ?? string.Empty,
                         Id = figdLink.Id,
                         Type = DocumentType.FI,
-                        RelatedRecords = figdLink.GdFiLinks.Select(figd => new RelatedRecord{ Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
+                        RelatedRecords = figdLink.GdFiLinks.DistinctBy(gd => gd.Gd!.gdNumber).Select(figd => new RelatedRecord{ Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
                     }).ToList();
 
                 //Gets the base gd and its multiple fi for comparison.
@@ -685,12 +686,13 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     .Include(gd => gd.GdFiLinks)
                         .ThenInclude(gdfi => gdfi!.Fi)
                     .Where(gd => gd.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GdFiLinks.Count() > 1)
+                    .AsEnumerable()
                     .Select(gd => new ComparisonInput
                     {
                         Payload = gd.Payload ?? string.Empty,
                         Id = gd.Id,
                         Type = DocumentType.GD,
-                        RelatedRecords = gd.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
+                        RelatedRecords = gd.GdFiLinks.DistinctBy(gd => gd.Fi!.FinInsUniqueNumber).Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
                     }).ToList();
 
                 if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
@@ -791,12 +793,13 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     .Include(figd => figd.GD_FI_Links)
                         .ThenInclude(fi => fi!.Gd)
                     .Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GD_FI_Links.Count() >= 1)
+                    .AsEnumerable()
                     .Select(figdLink => new ComparisonInput
                     {
                         Payload = figdLink.PAYLOAD ?? string.Empty,
                         Id = figdLink.Id,
                         Type = DocumentType.FI,
-                        RelatedRecords = figdLink.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
+                        RelatedRecords = figdLink.GD_FI_Links.DistinctBy(gd => gd.Gd!.gdNumber).Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
                     }).ToList();
 
 
@@ -804,12 +807,13 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     .Include(gd => gd.GD_FI_Links)
                         .ThenInclude(gdfi => gdfi!.Fi)
                     .Where(gd => gd.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GD_FI_Links.Count() > 1)
+                    .AsEnumerable()
                     .Select(gd => new ComparisonInput
                     {
                         Payload = gd.PAYLOAD ?? string.Empty,
                         Id = gd.Id,
                         Type = DocumentType.GD,
-                        RelatedRecords = gd.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
+                        RelatedRecords = gd.GD_FI_Links.DistinctBy(gd => gd.Fi!.finInsUniqueNumber).Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
                     }).ToList();
 
                 if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
@@ -908,12 +912,13 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     .Include(figd => figd.GdFiLinks)
                         .ThenInclude(fi => fi!.Gd)
                     .Where(fi => fi.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GdFiLinks.Count() >= 1)
+                    .AsEnumerable()
                     .Select(figdLink => new ComparisonInput
                     {
                         Payload = figdLink.Payload ?? string.Empty,
                         Id = figdLink.Id,
                         Type = DocumentType.FI,
-                        RelatedRecords = figdLink.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
+                        RelatedRecords = figdLink.GdFiLinks.DistinctBy(gd => gd.Gd!.gdNumber).Select(figd => new RelatedRecord { Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
                     }).ToList();
 
 
@@ -921,12 +926,13 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     .Include(gd => gd.GdFiLinks)
                         .ThenInclude(gdfi => gdfi!.Fi)
                     .Where(gd => gd.GdFiLinks.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GdFiLinks.Count() > 1)
+                    .AsEnumerable()
                     .Select(gd => new ComparisonInput
                     {
                         Payload = gd.Payload ?? string.Empty,
                         Id = gd.Id,
                         Type = DocumentType.GD,
-                        RelatedRecords = gd.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
+                        RelatedRecords = gd.GdFiLinks.DistinctBy(gd => gd.Fi!.FinInsUniqueNumber).Select(figd => new RelatedRecord { Payload = figd.Fi!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() 
                     }).ToList();
 
                 if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
@@ -1024,12 +1030,13 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     .Include(figd => figd.GD_FI_Links)
                         .ThenInclude(fi => fi!.Gd)
                     .Where(fi => fi.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && fi.GD_FI_Links.Count() >= 1)
+                    .AsEnumerable()
                     .Select(figdLink => new ComparisonInput
                     {
                         Payload = figdLink.PAYLOAD ?? string.Empty,
                         Id = figdLink.Id,
                         Type = DocumentType.FI,
-                        RelatedRecords = figdLink.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
+                        RelatedRecords = figdLink.GD_FI_Links.DistinctBy(gd => gd.Gd!.gdNumber).Select(figd => new RelatedRecord { Payload = figd.Gd!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
                     }).ToList();
 
 
@@ -1037,12 +1044,13 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                     .Include(gd => gd.GD_FI_Links)
                         .ThenInclude(gdfi => gdfi!.Fi)
                     .Where(gd => gd.GD_FI_Links.Any(link => gdfilinkIds.Contains(link.Id)) && gd.GD_FI_Links.Count() > 1)
+                    .AsEnumerable()
                     .Select(gd => new ComparisonInput
                     {
                         Payload = gd.PAYLOAD ?? string.Empty,
                         Id = gd.Id,
                         Type = DocumentType.GD,
-                        RelatedRecords = gd.GD_FI_Links.Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
+                        RelatedRecords = gd.GD_FI_Links.DistinctBy(gd => gd.Fi!.finInsUniqueNumber).Select(figd => new RelatedRecord { Payload = figd.Fi!.PAYLOAD ?? string.Empty, RelationId = figd.Id }).ToList() 
                     }).ToList();
 
                 if (groupedFiGds.Count == 0 && groupedGdFis.Count == 0)
