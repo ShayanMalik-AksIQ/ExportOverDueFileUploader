@@ -2,7 +2,6 @@
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System.Data;
-using System.Globalization;
 
 namespace ExportOverDueFileUploader.DataImporter
 {
@@ -117,12 +116,13 @@ namespace ExportOverDueFileUploader.DataImporter
                     try
                     {
 
-                        string dateString = _row["TransmissionDate"].ToString().Substring(0, 10); // Extract the first 10 characters
-                        string format = "dd/MM/yyyy";
-                        CultureInfo provider = CultureInfo.InvariantCulture;
+                        string dateString = _row["TransmissionDate"].ToString();
+                        DateTime dateTime = DateTime.Parse(dateString);//.Substring(0, 10); // Extract the first 10 characters
+                        //string format = "mm/dd/yyyy";
+                        //CultureInfo provider = CultureInfo.InvariantCulture;
 
-                        DateTime result = DateTime.ParseExact(dateString, format, provider);
-                        _row["TransmissionDate"] = null;
+                        //DateTime result = DateTime.ParseExact(dateString, format, provider);
+                        _row["TransmissionDate"] = dateTime;
 
                     }
                     catch

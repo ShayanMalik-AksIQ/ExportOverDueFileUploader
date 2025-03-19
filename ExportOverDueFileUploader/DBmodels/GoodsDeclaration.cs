@@ -1,7 +1,5 @@
 ﻿using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.RegularExpressions;
 
@@ -99,15 +97,12 @@ public partial class GoodsDeclaration
 
                 foreach (var fi in LstfinInsUniqueNumbers.Split(","))
                 {
-                    if(fi.StartsWith("("))
+                    fiNumberAndModes.Add(new FiNumberAndMode
                     {
-                        fiNumberAndModes.Add(new FiNumberAndMode { ModeOFPayment = fi.Trim('(', ')') });
-                    }
-                    else
-                    {
+                        FiNumber = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value ?? null,
+                        ModeOFPayment = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
+                    });
 
-                    fiNumberAndModes.Add(Parse(fi));
-                    }
                 }
 
             }

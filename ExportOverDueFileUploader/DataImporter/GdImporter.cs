@@ -49,16 +49,14 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 if (payload?.data?.financialInformation?.financialInstrument != null)
                 {
-                    if(payload.data.financialInformation.financialInstrument.Count == 1)
+                    foreach (var financialInstrument in payload?.data?.financialInformation?.financialInstrument)
                     {
+                        if (financialInstrument.finInsUniqueNumber != null)
+                        {
 
-                        _row["FinInsUniqueNumber"] = payload.data.financialInformation.financialInstrument.First().finInsUniqueNumber;
-                        _row["ModeOfPayment"] = payload.data.financialInformation.financialInstrument.First().modeOfPayment;
-                    }
-                    else
-                    {
-                        fiNumber.AddRange(payload.data.financialInformation.financialInstrument.Select(f => f.finInsUniqueNumber));
-                        lstModeOfPayment.AddRange(payload.data.financialInformation.financialInstrument.Select(f => f.modeOfPayment));
+                            fiNumber.Add(financialInstrument.finInsUniqueNumber?.ToString());
+                        }
+                        lstFiNumber.Add($"{financialInstrument.finInsUniqueNumber?.ToString()}({financialInstrument.modeOfPayment?.ToString()})");
                     }
                 }
                 else if (payload?.data?.financialInfo != null)
@@ -70,7 +68,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 _row["gdNumber"] = payload?.data?.gdNumber?.ToString();
                 _row["gdStatus"] = payload?.data?.gdStatus?.ToString();
                 _row["consigneeName"] = payload?.data?.consignorConsigneeInfo?.consigneeName.ToString();
-                _row["LstfinInsUniqueNumbers"] = lstFiNumber.Count > 0 ? string.Join(", ", lstFiNumber) : null;
+                _row["LstfinInsUniqueNumbers"] = lstFiNumber.Count > 0 ? string.Join(",", lstFiNumber) : null;
                 _row["blDate"] = payload?.data?.blAwbDate?.ToString();
                 _row["ShipmentDate"] = payload?.data?.blAwbDate?.ToString();
                 _row["itemInformationJson"] = payload?.data?.itemInformation != null ? JsonConvert.SerializeObject(payload?.data?.itemInformation) : null;
@@ -98,9 +96,6 @@ namespace ExportOverDueFileUploader.DataImporter
             }
 
         }
-
-
-
 
         public static List<string> LoadImportGdInfoColoums(DataRow _row)
         {
@@ -138,7 +133,7 @@ namespace ExportOverDueFileUploader.DataImporter
                         _row["GDDate"] = null;
                     }
                 }
-                if (_row["TransmissionDate"].ToString() != null && _row["TransmissionDate"].ToString().Length==9)
+                if (_row["TransmissionDate"].ToString() != null && _row["TransmissionDate"].ToString().Length == 9)
                 {
                     try
                     {

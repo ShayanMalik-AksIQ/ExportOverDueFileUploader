@@ -1,7 +1,5 @@
 ﻿using ExportOverDueFileUploader.DBmodels;
 using ExportOverDueFileUploader.MatuirtyBO;
-using ExportOverDueFileUploader.Modles;
-using ExportOverDueFileUploader.ValidateIqBizLogic;
 using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +9,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace ExportOverDueFileUploader.DataImporter
 {
@@ -82,7 +81,7 @@ namespace ExportOverDueFileUploader.DataImporter
                 Payload = fi.Payload ?? string.Empty,
                 Id = fi.Id,
                 Type = DocumentType.FI,
-                RelatedRecords = fi.GdFiLinks.Select(figd => new RelatedRecord{ Payload =  figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id}).ToList() ?? []
+                RelatedRecords = fi.GdFiLinks.Select(figd => new RelatedRecord { Payload = figd.Gd!.Payload ?? string.Empty, RelationId = figd.Id }).ToList() ?? []
             }).ToList();
 
             Stopwatch sw = new();
@@ -343,9 +342,10 @@ namespace ExportOverDueFileUploader.DataImporter
                     DataTable data = dataTable;
                     if (dataTable == null)
                     {
-                        JsonSerializerSettings settings = new() { 
-                            Converters = [new ForceStringConverter()], 
-                            DateParseHandling = DateParseHandling.None 
+                        JsonSerializerSettings settings = new()
+                        {
+                            Converters = [new ForceStringConverter()],
+                            DateParseHandling = DateParseHandling.None
                         };
 
                         data = JsonConvert.DeserializeObject<DataTable>(jsonData, settings) ?? new DataTable();
@@ -386,7 +386,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     else if (EntityName == "GoodsDeclaration")
                     {
-                        data.Columns.Add("TRANSMISSION_DATETIME");
+                        //data.Columns.Add("TRANSMISSION_DATETIME");
 
                         data = data.Select("MESSAGE_TYPE = '102'").CopyToDataTable();
                         //var responseRows = data.Select("DIRECTION = 'RESPONSE' AND STATUS_CODE = '200'");
@@ -455,7 +455,7 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     else if (EntityName == "GoodsDeclaration")
                     {
-                        filter = ExtractFiNumberFromNewGDs(data);
+                        filter = ExtractFiNumberFromNewGDsExport(data);
                     }
                     return filter;
                 }
@@ -538,11 +538,15 @@ namespace ExportOverDueFileUploader.DataImporter
         {
             try
             {
-                List<string> fis = [];
-                List<string> gds = [];
+                List<string> fis = new List<string>();
+                List<string> gds = new List<string>();
 
                 foreach (DataRow row in dataTable.Rows)
                 {
+                    if (row["ModeOfPayment"].ToString() == "302")
+                    {
+                        gds.Add(row["gdNumber"].ToString());
+                    }
                     IEnumerable<string> lstFinInsUniqueNumbers = [];
                     string? finInsUniqueNumbers = row["FinInsUniqueNumber"].ToString();
                     string? strlstFinInsUniqueNumbers = row.Table.Columns.Contains("LstfinInsUniqueNumbers")
@@ -561,13 +565,82 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         fis.AddRange(lstFinInsUniqueNumbers);
                     }
+
+
                 }
                 return new NewFiGdFilterModel
                 {
                     fis = fis.Where(x => x != null && x != "")
                              .Distinct()
                              .ToList(),
-                    gds = null
+                    gds = gds.Where(x => x != null && x != "")
+                                      .Distinct()
+                                      .ToList()
+                };
+            }
+            catch
+            {
+                return new NewFiGdFilterModel();
+
+            }
+        }
+
+        private NewFiGdFilterModel ExtractFiNumberFromNewGDsExport(DataTable dataTable)
+        {
+            try
+            {
+                List<string> fis = new List<string>();
+                List<string> gds = new List<string>();
+
+                foreach (DataRow row in dataTable.Rows)
+                {
+
+                    string LstfinInsUniqueNumbers = row["LstfinInsUniqueNumbers"].ToString();
+                    List<FiNumberAndMode> fiNumberAndModes = new List<FiNumberAndMode>();
+                    if (LstfinInsUniqueNumbers != null && LstfinInsUniqueNumbers != "")
+                    {
+                        foreach (var fi in LstfinInsUniqueNumbers.Split(","))
+                        {
+                            var x = new FiNumberAndMode
+                            {
+                                FiNumber = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["FiNumber"].Value ?? null,
+                                ModeOFPayment = Regex.Match(fi, @"^(?<FiNumber>[\w-]+)(\((?<Value>\d+)\))?$").Groups["Value"]?.Value ?? null
+                            };
+                            if (x != null || !x.FiNumber.IsNullOrEmpty())
+                            {
+
+                                fis.Add(x.FiNumber);
+                            }
+                            if (fi == "(305)")
+                            {
+                                if (row["gdNumber"] != null)
+                                {
+                                    var gdnum = row["gdNumber"].ToString();
+                                    if (gdnum.IsNullOrEmpty())
+                                    {
+
+                                    }
+                                    gds.Add(row["gdNumber"].ToString());
+                                }
+                            }
+                            if (x == null || x.FiNumber.IsNullOrEmpty() && fi != "(305)")
+                            {
+
+
+                            }
+                        }
+                    }
+
+
+                }
+                return new NewFiGdFilterModel
+                {
+                    fis = fis.Where(x => x != null && x != "")
+                             .Distinct()
+                             .ToList(),
+                    gds = gds.Where(x => x != null && x != "")
+                                      .Distinct()
+                                      .ToList()
                 };
             }
             catch
@@ -594,7 +667,8 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         fis.Add(fi);
                     }
-                    if (!string.IsNullOrEmpty(gd)) { 
+                    if (!string.IsNullOrEmpty(gd))
+                    {
                         gdNumberList.Add(gd);
                     }
                 }

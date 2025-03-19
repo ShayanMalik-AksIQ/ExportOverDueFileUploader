@@ -1,6 +1,6 @@
 ﻿using ExportOverDueFileUploader.DBmodels;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
 {
@@ -274,7 +274,7 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
                     var hsCode1 = token1["hsCode"]?.ToString();
                     if (hsCode1 == null || !tokens2Map.TryGetValue(hsCode1, out var matchingTokens2))
                     {
-                        int match = BaseFeild == DocumentType.FI.ToString() ? 1 : 0;
+                        int match = 0;
                         // If hscode does not match terminate further processing for same hscode of base field and add result to result list.
                         result.Add(GetResult(setting, ReqStatusId, fId, gId, figdId, BaseFeild, hsCode1, null, match, null, "hscode", comparisonType));
                         continue;
@@ -345,7 +345,7 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
                     var hsCode2 = token2["hsCode"]?.ToString();
                     if (hsCode2 is not null && !tokens1HsCodes.Contains(hsCode2))
                     {
-                        int match = BaseFeild == DocumentType.FI.ToString() ? 0 : 1;
+                        int match = 0;
                         // Add result for unmatched hsCodes from Tokens2
                         result.Add(GetResult(setting, ReqStatusId, fId, gId, figdId, BaseFeild, null, hsCode2, match, null, "hscode", comparisonType));
                     }
@@ -433,8 +433,8 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
                 {
                     return new AggregiatedResultImport
                     {
-                        ComparisonType = $"{setting.ValidationType} Comparison > {comparisonCategory}",
-                        Entity1Key = keyType != null? setting.Entity1Key!.Replace("hsCode", keyType) : setting.Entity1Key,
+                        ComparisonType = $"{keyType?.ToUpper()} Comparison > {comparisonCategory}",
+                        Entity1Key = keyType != null ? setting.Entity1Key!.Replace("hsCode", keyType) : setting.Entity1Key,
                         Entity2Key = keyType != null ? setting.Entity2Key!.Replace("hsCode", keyType) : setting.Entity2Key,
                         Entity1Value = entity1Value?.ToString() ?? "N/A",
                         Entity2Value = entity2Value?.ToString() ?? "N/A",
@@ -451,7 +451,7 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
                 {
                     return new ComparisonResultImport
                     {
-                        ComparisonType = $"{setting.ValidationType} Comparison > {comparisonCategory}",
+                        ComparisonType = $"{keyType?.ToUpper()} Comparison > {comparisonCategory}",
                         Entity1Key = keyType != null ? setting.Entity1Key!.Replace("hsCode", keyType) : setting.Entity1Key,
                         Entity2Key = keyType != null ? setting.Entity2Key!.Replace("hsCode", keyType) : setting.Entity2Key,
                         Entity1Value = entity1Value?.ToString() ?? "N/A",
@@ -471,7 +471,7 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
                 {
                     return new AggregiatedResultExport
                     {
-                        ComparisonType = $"{setting.ValidationType} Comparison > {comparisonCategory}",
+                        ComparisonType = $"{keyType?.ToUpper()} Comparison > {comparisonCategory}",
                         Entity1Key = keyType != null ? setting.Entity1Key!.Replace("hsCode", keyType) : setting.Entity1Key,
                         Entity2Key = keyType != null ? setting.Entity2Key!.Replace("hsCode", keyType) : setting.Entity2Key,
                         Entity1Value = entity1Value?.ToString() ?? "N/A",
@@ -489,7 +489,7 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
                 {
                     return new ComparisonResultExport
                     {
-                        ComparisonType = $"{setting.ValidationType} Comparison > {comparisonCategory}",
+                        ComparisonType = $"{keyType?.ToUpper()} Comparison > {comparisonCategory}",
                         Entity1Key = keyType != null ? setting.Entity1Key!.Replace("hsCode", keyType) : setting.Entity1Key,
                         Entity2Key = keyType != null ? setting.Entity2Key!.Replace("hsCode", keyType) : setting.Entity2Key,
                         Entity1Value = entity1Value?.ToString() ?? "N/A",

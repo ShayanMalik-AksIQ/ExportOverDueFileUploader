@@ -365,6 +365,7 @@ namespace ExportOverDueFileUploader.DBHelper
                             g.IsDeleted,
                             TenantId = g.TenantId,
                             g.finInsUniqueNumber,
+                            g.LstfinInsUniqueNumbers,
                             g.modeOfPayment,
                             g.PAYLOAD,
                             g.gdNumber,
@@ -380,6 +381,7 @@ namespace ExportOverDueFileUploader.DBHelper
                     gdNumber = g.gdNumber,
                     GDDate = g.GDDate,
                     PAYLOAD = g.PAYLOAD,
+                    LstfinInsUniqueNumbers = g.LstfinInsUniqueNumbers
 
                 }).ToList();
                 return result;
@@ -446,6 +448,7 @@ namespace ExportOverDueFileUploader.DBHelper
                     FiCertifcationDate = f.FiCertifcationDate,
                     Payload = f.Payload,
                     OpenAccountGdNumber = f.OpenAccountGdNumber
+
                 }).Distinct().ToList();
                 return result;
 
@@ -532,8 +535,8 @@ namespace ExportOverDueFileUploader.DBHelper
                 var result = new List<GoodsDeclarationImport>();
                 var rawResult = context.GoodsDeclarationImports
                         .Where(g => g.TenantId == TenantId && g.IsDeleted == false
-                               && g.gdStatus == "05" 
-                               && ((g.FinInsUniqueNumber != null && fis_gds.fis.Contains(g.FinInsUniqueNumber)) 
+                               && g.gdStatus == "05"
+                               && ((g.FinInsUniqueNumber != null && fis_gds.fis.Contains(g.FinInsUniqueNumber))
                                     || (g.gdNumber != null && fis_gds.gds != null && fis_gds.gds.Contains(g.gdNumber))))
                        .Select(g => new
                        {
@@ -576,9 +579,8 @@ namespace ExportOverDueFileUploader.DBHelper
                 var result = new List<GoodsDeclaration>();
                 var rawResult = context.GoodsDeclaration
                         .Where(g => g.TenantId == TenantId && g.IsDeleted == false
-                               && g.gdStatus == "05" 
-                               && ((g.finInsUniqueNumber != null && fis_gds.fis.Contains(g.finInsUniqueNumber)) 
-                                    || (g.gdNumber != null && fis_gds.gds != null && fis_gds.gds.Contains(g.gdNumber))))
+                               && g.gdStatus == "05"
+                               )
                        .Select(g => new
                        {
                            g.GDDate,
@@ -586,6 +588,7 @@ namespace ExportOverDueFileUploader.DBHelper
                            g.IsDeleted,
                            TenantId = g.TenantId,
                            g.finInsUniqueNumber,
+                           g.LstfinInsUniqueNumbers,
                            g.modeOfPayment,
                            g.gdNumber,
                            g.PAYLOAD
@@ -598,6 +601,7 @@ namespace ExportOverDueFileUploader.DBHelper
                     TenantId = g.TenantId,
                     finInsUniqueNumber = g.finInsUniqueNumber,
                     modeOfPayment = g.modeOfPayment,
+                    LstfinInsUniqueNumbers = g.LstfinInsUniqueNumbers,
                     gdNumber = g.gdNumber,
                     GDDate = g.GDDate,
                     PAYLOAD = g.PAYLOAD
@@ -631,7 +635,7 @@ namespace ExportOverDueFileUploader.DBHelper
                                                             })
                                                             .ToList();
 
-                List <FinancialInstrumentImport> result = rawResult.Select(f => new FinancialInstrumentImport
+                List<FinancialInstrumentImport> result = rawResult.Select(f => new FinancialInstrumentImport
                 {
                     Id = f.Id,
                     IsDeleted = f.IsDeleted,
@@ -669,7 +673,7 @@ namespace ExportOverDueFileUploader.DBHelper
                                                             })
                                                             .ToList();
 
-                List <FinancialInstrument> result = rawResult.Select(f => new FinancialInstrument
+                List<FinancialInstrument> result = rawResult.Select(f => new FinancialInstrument
                 {
                     Id = f.Id,
                     IsDeleted = f.IsDeleted,
