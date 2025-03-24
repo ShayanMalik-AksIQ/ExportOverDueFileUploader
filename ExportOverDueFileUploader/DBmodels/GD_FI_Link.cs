@@ -43,7 +43,8 @@ public partial class GD_FI_Link
     public long? DeleterUserId { get; set; }
 
     public DateTime? DeletionTime { get; set; }
-
+    public long? RequestStatusId { get; set; }
+    public virtual RequestStatus? RequestStatus { get; set; }
     public virtual FinancialInstrument? Fi { get; set; }
 
     public virtual GoodsDeclaration? Gd { get; set; }

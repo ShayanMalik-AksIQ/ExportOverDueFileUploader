@@ -62,7 +62,7 @@ namespace ExportOverDueFileUploader.DataImporter
             try
             {
                 var x = _row["PAYLOAD"]?.ToString();
-                var InnerObj = JsonConvert.DeserializeObject<FIPayload>(_row["PAYLOAD"]?.ToString()).Data.ToString();
+                var InnerObj = Convert.ToString(JsonConvert.DeserializeObject<FIPayload>(_row["PAYLOAD"]?.ToString())?.Data);
                 FiImportPayLoadJson payload = JsonConvert.DeserializeObject<FiImportPayLoadJson>(InnerObj);
 
                 if (payload != null)
@@ -104,36 +104,38 @@ namespace ExportOverDueFileUploader.DataImporter
 
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 //Console.WriteLine(_row["ResponceCode"]?.ToString());
                 return;
             }
             finally
             {
-                if (_row["TransmissionDate"].ToString() != null)
-                {
-                    try
-                    {
+                _row["TransmissionDate"] = null;
 
-                        string dateString = _row["TransmissionDate"].ToString();
-                        DateTime dateTime = DateTime.Parse(dateString);//.Substring(0, 10); // Extract the first 10 characters
-                        //string format = "mm/dd/yyyy";
-                        //CultureInfo provider = CultureInfo.InvariantCulture;
+                //if (_row["TransmissionDate"].ToString() != null)
+                //{
+                //    try
+                //    {
 
-                        //DateTime result = DateTime.ParseExact(dateString, format, provider);
-                        _row["TransmissionDate"] = dateTime;
+                //        string dateString = _row["TransmissionDate"].ToString();
+                //        DateTime dateTime = DateTime.Parse(dateString);//.Substring(0, 10); // Extract the first 10 characters
+                //        //string format = "mm/dd/yyyy";
+                //        //CultureInfo provider = CultureInfo.InvariantCulture;
 
-                    }
-                    catch
-                    {
-                        _row["TransmissionDate"] = null;
-                    }
-                }
-                else
-                {
-                    _row["TransmissionDate"] = null;
-                }
+                //        //DateTime result = DateTime.ParseExact(dateString, format, provider);
+                //        _row["TransmissionDate"] = dateTime;
+
+                //    }
+                //    catch
+                //    {
+                //        _row["TransmissionDate"] = null;
+                //    }
+                //}
+                //else
+                //{
+                //    _row["TransmissionDate"] = null;
+                //}
             }
 
         }
@@ -142,8 +144,12 @@ namespace ExportOverDueFileUploader.DataImporter
             try
             {
 
-                var InnerObj = JsonConvert.DeserializeObject<FIPayload>(_row["PAYLOAD"]?.ToString()).Data.ToString();
+                var InnerObj = Convert.ToString(JsonConvert.DeserializeObject<FIPayload>(_row["PAYLOAD"]?.ToString())?.Data);
 
+                if (InnerObj.IsNullOrEmpty())
+                {
+                    return;
+                }
                 FiPayLoadJson payload = JsonConvert.DeserializeObject<FiPayLoadJson>(InnerObj);
 
                 if (payload != null)

@@ -138,6 +138,10 @@ namespace ExportOverDueFileUploader.DataImporter
             {
                 Seriloger.LoggerInstance.Information("Export Over Due Uploader Execution Begins ......");
                 ExportOverDueContext context = new ExportOverDueContext();
+                AppSettings.NotMatchReqStats = 11;
+                AppSettings.MatchReqStats = 15;
+                AppSettings.GdFiLinkReqStats = 12;
+
                 var settings = context.DefaultSettings.ToList();
 
                 var maxLoadingOrder = context.RequestStatuses
@@ -381,14 +385,14 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     else if (EntityName == "FinancialInstrument")
                     {
-                        data = data.Select("TRANSACTION_TYPE = '1524'").CopyToDataTable();
+                        // data = data.Select("TRANSACTION_TYPE = '1524'").CopyToDataTable();
                         AddColumns(data, FiImporter.FiColoums);
                     }
                     else if (EntityName == "GoodsDeclaration")
                     {
                         //data.Columns.Add("TRANSMISSION_DATETIME");
 
-                        data = data.Select("MESSAGE_TYPE = '102'").CopyToDataTable();
+                        // data = data.Select("MESSAGE_TYPE = '102'").CopyToDataTable();
                         //var responseRows = data.Select("DIRECTION = 'RESPONSE' AND STATUS_CODE = '200'");
                         //var responseMessageIds = responseRows.Select(row => row["MESSAGE_ID"].ToString()).ToHashSet();
 
@@ -438,8 +442,20 @@ namespace ExportOverDueFileUploader.DataImporter
                     {
                         data = data.Select("FinInsUniqueNumber <> ''").CopyToDataTable();
                     }
+                    if (EntityName == "GoodsDeclaration")
+                    {
+                        data = data.Select("gdNumber <> ''").CopyToDataTable();
+
+                    }
+                    else if (EntityName == "FinancialInstrument")
+                    {
+                        data = data.Select("finInsUniqueNumber <> ''").CopyToDataTable();
+                    }
 
                     BulkInsert(data, EntityName);
+
+
+
 
                     if (EntityName == "GoodsDeclarationImport")
                     {
@@ -447,10 +463,12 @@ namespace ExportOverDueFileUploader.DataImporter
                     }
                     else if (EntityName == "FinancialInstrumentImport")
                     {
+                        // CustomRepo.UpdateBranchSegment(EntityName);
                         filter = ExtractFilisterList(data);
                     }
                     else if (EntityName == "FinancialInstrument")
                     {
+                        //CustomRepo.UpdateBranchSegment(EntityName);
                         filter = ExtractFilisterList(data);
                     }
                     else if (EntityName == "GoodsDeclaration")

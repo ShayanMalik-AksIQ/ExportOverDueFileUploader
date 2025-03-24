@@ -283,6 +283,9 @@ namespace ExportOverDueFileUploader.DBHelper
         {
             var context = new ExportOverDueContext();
 
+
+            results?.ForEach(x => x.RequestStatusId = x.Result == 1 ? AppSettings.MatchReqStats : AppSettings.NotMatchReqStats);
+
             var aggImport = results.Where(x => x is AggregiatedResultImport)
                       .Select(x => (AggregiatedResultImport)x)
                       .ToList();
@@ -303,8 +306,9 @@ namespace ExportOverDueFileUploader.DBHelper
             context.ComparisonResultImports.AddRange(compImport);
             context.AggregiatedResultExports.AddRange(aggExport);
             context.ComparisonResultExports.AddRange(compExport);
-
+            Seriloger.LoggerInstance.Information("ComparisonResults Saving Starts....");
             context.SaveChanges();
+            Seriloger.LoggerInstance.Information("ComparisonResults Saving Compleated....");
         }
 
         #region Sync newGD
@@ -396,69 +400,62 @@ namespace ExportOverDueFileUploader.DBHelper
         {
             try
             {
-                var context = new ExportOverDueContext();
-                List<dynamic> rawResult = [];
-                var rawResult1 = context.FinancialInstrumentImports.Where(g => g.TenantId == TenantId
-                    && g.IsDeleted == false
-                    && g.ResponseCode == "200"
-                    //&& (fis_gds.fis.Contains(g.FinInsUniqueNumber!) || fis_gds.gds.Contains(g.OpenAccountGdNumber)))
-                    && fis_gds.fis.Contains(g.FinInsUniqueNumber!))
-                        .Select(f => new
-                        {
-                            f.Id,
-                            f.IsDeleted,
-                            TenantId = f.TenantId,
-                            f.Payload,
-                            f.FinInsUniqueNumber,
-                            f.modeOfPayment,
-                            f.FiCertifcationDate,
-                            f.OpenAccountGdNumber
-                        })
-                        .ToList();
+                using var context = new ExportOverDueContext();
 
-                var rawResult2 = context.FinancialInstrumentImports.Where(g => g.TenantId == TenantId
-                    && g.IsDeleted == false
-                    //&& g.ResponseCode == "200"
-                    && g.OpenAccountGdNumber != null
-                    && g.modeOfPayment == "302"
-                    && gdNums.Contains(g.OpenAccountGdNumber)
-                    ).Select(f => new
+                // Convert gdNums to HashSet for faster lookup
+                var gdNumsSet = new HashSet<string?>(gdNums);
+
+                // Query 1: Fetch by FinInsUniqueNumber
+                var rawResult1 = context.FinancialInstrumentImports
+                    .Where(g => g.TenantId == TenantId
+                        && !g.IsDeleted
+                        && g.ResponseCode == "200"
+                        && fis_gds.fis.Contains(g.FinInsUniqueNumber))
+                    .Select(f => new FinancialInstrumentImport
                     {
-                        f.Id,
-                        f.IsDeleted,
+                        Id = f.Id,
+                        IsDeleted = f.IsDeleted,
                         TenantId = f.TenantId,
-                        f.Payload,
-                        f.FinInsUniqueNumber,
-                        f.modeOfPayment,
-                        f.FiCertifcationDate,
-                        f.OpenAccountGdNumber
+                        Payload = f.Payload,
+                        FinInsUniqueNumber = f.FinInsUniqueNumber,
+                        modeOfPayment = f.modeOfPayment,
+                        FiCertifcationDate = f.FiCertifcationDate,
+                        OpenAccountGdNumber = f.OpenAccountGdNumber
                     })
-                    .ToList();
+                    .ToList(); // Execute query
 
-                rawResult.AddRange(rawResult1);
-                rawResult.AddRange(rawResult2);
+                // Query 2: Fetch by OpenAccountGdNumber (Optimized)
+                var rawResult2 = context.FinancialInstrumentImports
+                    .Where(g => g.TenantId == TenantId
+                        && !g.IsDeleted
+                        && g.OpenAccountGdNumber != null
+                        && g.modeOfPayment == "302"
+                        && gdNumsSet.Contains(g.OpenAccountGdNumber))  // Faster lookup
+                    .Select(f => new FinancialInstrumentImport
+                    {
+                        Id = f.Id,
+                        IsDeleted = f.IsDeleted,
+                        TenantId = f.TenantId,
+                        Payload = f.Payload,
+                        FinInsUniqueNumber = f.FinInsUniqueNumber,
+                        modeOfPayment = f.modeOfPayment,
+                        FiCertifcationDate = f.FiCertifcationDate,
+                        OpenAccountGdNumber = f.OpenAccountGdNumber
+                    })
+                    .ToList(); // Execute query
 
-                List<FinancialInstrumentImport> result = rawResult.Select(f => new FinancialInstrumentImport
-                {
-                    Id = f.Id,
-                    IsDeleted = f.IsDeleted,
-                    TenantId = f.TenantId,
-                    FinInsUniqueNumber = f.FinInsUniqueNumber,
-                    modeOfPayment = f.modeOfPayment,
-                    FiCertifcationDate = f.FiCertifcationDate,
-                    Payload = f.Payload,
-                    OpenAccountGdNumber = f.OpenAccountGdNumber
+                // Merge results and remove duplicates
+                var result = rawResult1.Concat(rawResult2).Distinct().ToList();
 
-                }).Distinct().ToList();
                 return result;
-
             }
             catch (Exception ex)
             {
                 Seriloger.LoggerInstance.Error("Error Fetching FinancialInstrument Data", ex.Message);
-                return null;
+                return new List<FinancialInstrumentImport>(); // Return empty list instead of null
             }
         }
+
         public static List<FinancialInstrument> GetFinancialInstrumentForExportForLink(List<string?> gdNums, long TenantId, NewFiGdFilterModel fis_gds)
         {
             try
@@ -531,46 +528,41 @@ namespace ExportOverDueFileUploader.DBHelper
         {
             try
             {
-                var context = new ExportOverDueContext();
-                var result = new List<GoodsDeclarationImport>();
-                var rawResult = context.GoodsDeclarationImports
-                        .Where(g => g.TenantId == TenantId && g.IsDeleted == false
-                               && g.gdStatus == "05"
-                               && ((g.FinInsUniqueNumber != null && fis_gds.fis.Contains(g.FinInsUniqueNumber))
-                                    || (g.gdNumber != null && fis_gds.gds != null && fis_gds.gds.Contains(g.gdNumber))))
-                       .Select(g => new
-                       {
-                           g.GDDate,
-                           g.Id,
-                           g.IsDeleted,
-                           TenantId = g.TenantId,
-                           g.FinInsUniqueNumber,
-                           g.ModeOfPayment,
-                           g.gdNumber,
-                           g.Payload
-                       })
-                        .ToList();
-                result = rawResult.Select(g => new GoodsDeclarationImport
-                {
-                    Id = g.Id,
-                    IsDeleted = g.IsDeleted,
-                    TenantId = g.TenantId,
-                    FinInsUniqueNumber = g.FinInsUniqueNumber,
-                    ModeOfPayment = g.ModeOfPayment,
-                    gdNumber = g.gdNumber,
-                    GDDate = g.GDDate,
-                    Payload = g.Payload
+                using var context = new ExportOverDueContext();
 
-                }).ToList();
+                // Convert lists to HashSet for faster lookup (O(1) instead of O(n))
+                var fisSet = new HashSet<string?>(fis_gds.fis);
+                var gdsSet = fis_gds.gds != null ? new HashSet<string?>(fis_gds.gds) : new HashSet<string?>();
+
+                // Query optimized: Directly select into GoodsDeclarationImport to avoid extra mapping
+                var result = context.GoodsDeclarationImports
+                    .Where(g => g.TenantId == TenantId
+                        && !g.IsDeleted
+                        && g.gdStatus == "05"
+                        && ((g.FinInsUniqueNumber != null && fisSet.Contains(g.FinInsUniqueNumber))
+                            || (g.gdNumber != null && gdsSet.Contains(g.gdNumber))))
+                    .Select(g => new GoodsDeclarationImport
+                    {
+                        Id = g.Id,
+                        IsDeleted = g.IsDeleted,
+                        TenantId = g.TenantId,
+                        FinInsUniqueNumber = g.FinInsUniqueNumber,
+                        ModeOfPayment = g.ModeOfPayment,
+                        gdNumber = g.gdNumber,
+                        GDDate = g.GDDate,
+                        Payload = g.Payload
+                    })
+                    .ToList(); // Execute SQL only once
 
                 return result;
             }
             catch (Exception ex)
             {
-                Seriloger.LoggerInstance.Error("Error Fetching GoodsDeclaration  Data", ex.Message);
-                return null;
+                Seriloger.LoggerInstance.Error("Error Fetching GoodsDeclaration Data", ex.Message);
+                return new List<GoodsDeclarationImport>(); // Return empty list instead of null
             }
         }
+
         public static List<GoodsDeclaration> GetGoodsDeclarationForLink(NewFiGdFilterModel fis_gds, long TenantId)
         {
             try
@@ -693,6 +685,51 @@ namespace ExportOverDueFileUploader.DBHelper
             }
         }
         #endregion
+
+        public static int UpdateBranchSegment(string Entity, long FileAuditId = 0)
+        {
+            try
+            {
+
+                if (Entity == "FinancialInstrument")
+                {
+                    var context = new ExportOverDueContext();
+                    var Query = $"  update a SET a.SegmentId = s.id,a.BranchCodeId=b.id  from BranchWiseSegments as l  inner join Segments as s on l.SegmentCode=s.[Name]  inner join BranchCodes as b on l.BranchCode =b.[Name]  inner join FinancialInstrument as a ON l.IBAN = JSON_VALUE(a.Payload, '$.data.exporterIban') and SegmentId is null OR BranchCodeId is null ";
+                    if (FileAuditId > 0)
+                    {
+                        Query = $"{Query}FileWise  @FileAuditId = {FileAuditId}";
+                    }
+                    var result = context.Database.ExecuteSqlRaw(Query);
+                    Seriloger.LoggerInstance.Information($"{Entity} of file id:{FileAuditId} dublication Removed ");
+                    return result;
+                }
+                if (Entity == "FinancialInstrumentImport")
+                {
+                    var context = new ExportOverDueContext();
+                    var Query = $"  update a  SET a.SegmentId = s.id,a.BranchCodeId=b.id  from BranchWiseSegments as l  inner join Segments as s on l.SegmentCode=s.[Name]  inner join BranchCodes as b on l.BranchCode =b.[Name]  inner join FinancialInstrumentImport as a ON l.IBAN = JSON_VALUE(a.Payload, '$.data.importerIban') and SegmentId is null OR BranchCodeId is null ";
+                    if (FileAuditId > 0)
+                    {
+                        Query = $"{Query}FileWise  @FileAuditId = {FileAuditId}";
+                    }
+                    var result = context.Database.ExecuteSqlRaw(Query);
+                    Seriloger.LoggerInstance.Information($"{Entity} of file id:{FileAuditId} dublication Removed ");
+                    return result;
+                }
+                else
+                {
+                    return 0;
+                }
+
+
+
+            }
+            catch (Exception ex)
+            {
+                Seriloger.LoggerInstance.Error("Error RemoveDublicateGds Data", ex.Message);
+                return 0;
+            }
+
+        }
 
 
 

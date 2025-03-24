@@ -588,116 +588,126 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
         {
             try
             {
-                JObject jsonObject = JObject.Parse(jsonString);
-                JToken? token = jsonObject.SelectToken(key);
-
-                //If value is array then group all the hscodes by their hscode and uom
-                if (token?.Type == JTokenType.Array)
+                if (jsonString[0] != '[')
                 {
-                    var groupedItems = token
-                    .GroupBy(item => new
-                    {
-                        hsCode = item["hsCode"]?.ToString(),
-                        uom = item["uom"]?.ToString()
-                    })
-                    .Select(group =>
-                    {
-                        return new JObject
-                        {
-                            ["hsCode"] = group.Key.hsCode,
-                            ["uom"] = group.Key.uom,
-                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
-                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
-                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
-                        };
-                    })
-                    .Cast<JToken>()
-                    .ToList();
-                    return new JArray(groupedItems);
-                }
 
-                return token;
+
+                    JObject jsonObject = JObject.Parse(jsonString);
+                    JToken? token = jsonObject.SelectToken(key);
+
+                    //If value is array then group all the hscodes by their hscode and uom
+                    if (token?.Type == JTokenType.Array)
+                    {
+                        var groupedItems = token
+                        .GroupBy(item => new
+                        {
+                            hsCode = item["hsCode"]?.ToString(),
+                            uom = item["uom"]?.ToString()
+                        })
+                        .Select(group =>
+                        {
+                            return new JObject
+                            {
+                                ["hsCode"] = group.Key.hsCode,
+                                ["uom"] = group.Key.uom,
+                                ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                                ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                                ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                            };
+                        })
+                        .Cast<JToken>()
+                        .ToList();
+                        return new JArray(groupedItems);
+                    }
+
+                    return token;
+                }
+                else
+
+                {
+                    //If the given object was jArray (when related entities are multiple) then parse it into jArray.
+                    JArray jsonArray = JArray.Parse(jsonString);
+
+                    //Get all the tokens for a key.
+                    var tokens = jsonArray
+                        .SelectMany(ja => ja.SelectTokens(key))
+                        //.Distinct()
+                        .ToList();
+
+                    //Selects the numeric tokens for sum.
+                    var numericTokens = tokens
+                        .Where(t => t.Type == JTokenType.Float || t.Type == JTokenType.Integer)
+                        .ToList();
+
+                    //Checks whether the tokens are list of list, if then flatten the list of list and then group afterwards.
+                    if (IsListOfLists(tokens))
+                    {
+                        var flattenedTokens = FlattenListOfLists(tokens);
+                        var groupedItems = flattenedTokens
+                        .GroupBy(item => new
+                        {
+                            hsCode = item["hsCode"]?.ToString(),
+                            uom = item["uom"]?.ToString()
+                        })
+                        .Select(group =>
+                        {
+                            return new JObject
+                            {
+                                ["hsCode"] = group.Key.hsCode,
+                                ["uom"] = group.Key.uom,
+                                ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                                ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                                ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                            };
+                        })
+                        .Cast<JToken>()
+                        .ToList();
+                        return new JArray(groupedItems);
+                    }
+
+                    //Sum all the numeric tokens.
+                    else if (numericTokens.Count != 0)
+                    {
+                        var sum = numericTokens.Sum(t => t.Value<decimal>());
+                        return sum;
+                    }
+
+                    //If the tokens is not list of list then select the first item in list and and perform same step as above for it. Applicable in minor cases.
+                    var tokenFromTokensLst = tokens
+                        .FirstOrDefault()?
+                        .SelectToken(key);
+
+                    if (tokenFromTokensLst?.Type == JTokenType.Float)
+                    {
+                        return tokenFromTokensLst.Value<decimal>();
+                    }
+
+                    var groupedItemsofLst =
+                        tokenFromTokensLst?
+                        .GroupBy(item => new
+                        {
+                            hsCode = item["hsCode"]?.ToString(),
+                            uom = item["uom"]?.ToString()
+                        })
+                        .Select(group =>
+                        {
+                            return new JObject
+                            {
+                                ["hsCode"] = group.Key.hsCode,
+                                ["uom"] = group.Key.uom,
+                                ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                                ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                                ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                            };
+                        })
+                        .Cast<JToken>()
+                        .ToList();
+                    return new JArray(groupedItemsofLst ?? []);
+                }
             }
-            catch (Exception)
+            catch
             {
-                //If the given object was jArray (when related entities are multiple) then parse it into jArray.
-                JArray jsonArray = JArray.Parse(jsonString);
-
-                //Get all the tokens for a key.
-                var tokens = jsonArray
-                    .SelectMany(ja => ja.SelectTokens(key))
-                    //.Distinct()
-                    .ToList();
-
-                //Selects the numeric tokens for sum.
-                var numericTokens = tokens
-                    .Where(t => t.Type == JTokenType.Float || t.Type == JTokenType.Integer)
-                    .ToList();
-
-                //Checks whether the tokens are list of list, if then flatten the list of list and then group afterwards.
-                if (IsListOfLists(tokens))
-                {
-                    var flattenedTokens = FlattenListOfLists(tokens);
-                    var groupedItems = flattenedTokens
-                    .GroupBy(item => new
-                    {
-                        hsCode = item["hsCode"]?.ToString(),
-                        uom = item["uom"]?.ToString()
-                    })
-                    .Select(group =>
-                    {
-                        return new JObject
-                        {
-                            ["hsCode"] = group.Key.hsCode,
-                            ["uom"] = group.Key.uom,
-                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
-                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
-                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
-                        };
-                    })
-                    .Cast<JToken>()
-                    .ToList();
-                    return new JArray(groupedItems);
-                }
-
-                //Sum all the numeric tokens.
-                else if (numericTokens.Count != 0)
-                {
-                    var sum = numericTokens.Sum(t => t.Value<decimal>());
-                    return sum;
-                }
-
-                //If the tokens is not list of list then select the first item in list and and perform same step as above for it. Applicable in minor cases.
-                var tokenFromTokensLst = tokens
-                    .FirstOrDefault()?
-                    .SelectToken(key);
-
-                if (tokenFromTokensLst?.Type == JTokenType.Float)
-                {
-                    return tokenFromTokensLst.Value<decimal>();
-                }
-
-                var groupedItemsofLst =
-                    tokenFromTokensLst?
-                    .GroupBy(item => new
-                    {
-                        hsCode = item["hsCode"]?.ToString(),
-                        uom = item["uom"]?.ToString()
-                    })
-                    .Select(group =>
-                    {
-                        return new JObject
-                        {
-                            ["hsCode"] = group.Key.hsCode,
-                            ["uom"] = group.Key.uom,
-                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
-                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
-                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
-                        };
-                    })
-                    .Cast<JToken>()
-                    .ToList();
-                return new JArray(groupedItemsofLst ?? []);
+                return null;
             }
         }
 
@@ -705,94 +715,102 @@ namespace ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2
         {
             try
             {
-                JObject jsonObject = JObject.Parse(jsonString);
-                JToken? token = jsonObject.SelectToken(key);
-
-                if (token?.Type == JTokenType.Array)
+                if (jsonString[0] != '[')
                 {
-                    var groupedItems = token
-                    .GroupBy(item => new
+
+                    JObject jsonObject = JObject.Parse(jsonString);
+                    JToken? token = jsonObject.SelectToken(key);
+
+                    if (token?.Type == JTokenType.Array)
                     {
-                        hsCode = item["hsCode"]?.ToString(),
-                        uom = item["uom"]?.ToString()
-                    })
-                    .Select(group =>
-                    {
-                        return new JObject
+                        var groupedItems = token
+                        .GroupBy(item => new
                         {
-                            ["hsCode"] = group.Key.hsCode,
-                            ["uom"] = group.Key.uom,
-                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
-                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
-                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
-                        };
-                    })
-                    .Cast<JToken>()
+                            hsCode = item["hsCode"]?.ToString(),
+                            uom = item["uom"]?.ToString()
+                        })
+                        .Select(group =>
+                        {
+                            return new JObject
+                            {
+                                ["hsCode"] = group.Key.hsCode,
+                                ["uom"] = group.Key.uom,
+                                ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                                ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                                ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                            };
+                        })
+                        .Cast<JToken>()
+                        .ToList();
+                        return groupedItems;
+                    }
+
+                    return (token is not null && token.Type == JTokenType.Array) ? [.. token] : [];
+
+                }
+                else
+                {
+                    JArray jsonArray = JArray.Parse(jsonString);
+
+                    var tokens = jsonArray
+                    .SelectMany(ja => ja.SelectTokens(key))
                     .ToList();
+
+                    if (!IsListOfLists(tokens))
+                    {
+                        var groupedItemsofLst = tokens
+                        .FirstOrDefault()?
+                        .SelectToken(key)?
+                        .GroupBy(item => new
+                        {
+                            hsCode = item["hsCode"]?.ToString(),
+                            uom = item["uom"]?.ToString()
+                        })
+                        .Select(group =>
+                        {
+                            return new JObject
+                            {
+                                ["hsCode"] = group.Key.hsCode,
+                                ["uom"] = group.Key.uom,
+                                ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                                ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                                ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                            };
+                        })
+                        .Cast<JToken>()
+                        .ToList();
+
+                        return groupedItemsofLst ?? [];
+                    }
+
+                    var flattenedTokens = FlattenListOfLists(tokens);
+
+                    var groupedItems = flattenedTokens
+                        .GroupBy(item => new
+                        {
+                            hsCode = item["hsCode"]?.ToString(),
+                            uom = item["uom"]?.ToString()
+                        })
+                        .Select(group =>
+                        {
+                            return new JObject
+                            {
+                                ["hsCode"] = group.Key.hsCode,
+                                ["uom"] = group.Key.uom,
+                                ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
+                                ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
+                                ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
+                            };
+                        })
+                        .Cast<JToken>()
+                        .ToList();
+
                     return groupedItems;
                 }
-
-                return (token is not null && token.Type == JTokenType.Array) ? [.. token] : [];
-
             }
-            catch (Exception)
+            catch
             {
-                JArray jsonArray = JArray.Parse(jsonString);
-
-                var tokens = jsonArray
-                .SelectMany(ja => ja.SelectTokens(key))
-                .ToList();
-
-                if (!IsListOfLists(tokens))
-                {
-                    var groupedItemsofLst = tokens
-                    .FirstOrDefault()?
-                    .SelectToken(key)?
-                    .GroupBy(item => new
-                    {
-                        hsCode = item["hsCode"]?.ToString(),
-                        uom = item["uom"]?.ToString()
-                    })
-                    .Select(group =>
-                    {
-                        return new JObject
-                        {
-                            ["hsCode"] = group.Key.hsCode,
-                            ["uom"] = group.Key.uom,
-                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
-                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
-                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
-                        };
-                    })
-                    .Cast<JToken>()
-                    .ToList();
-
-                    return groupedItemsofLst ?? [];
-                }
-
-                var flattenedTokens = FlattenListOfLists(tokens);
-
-                var groupedItems = flattenedTokens
-                    .GroupBy(item => new
-                    {
-                        hsCode = item["hsCode"]?.ToString(),
-                        uom = item["uom"]?.ToString()
-                    })
-                    .Select(group =>
-                    {
-                        return new JObject
-                        {
-                            ["hsCode"] = group.Key.hsCode,
-                            ["uom"] = group.Key.uom,
-                            ["quantity"] = group.Sum(x => x["quantity"]?.Value<decimal>() ?? 0),
-                            ["totalValue"] = group.Sum(x => x["totalValue"]?.Value<decimal>() ?? 0),
-                            ["importValue"] = group.Sum(x => x["importValue"]?.Value<decimal>() ?? 0)
-                        };
-                    })
-                    .Cast<JToken>()
-                    .ToList();
-
-                return groupedItems;
+                return null;
             }
         }
 

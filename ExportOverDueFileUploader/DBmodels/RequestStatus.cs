@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using ExportOverDueFileUploader.ValidateIqBizLogic.Comparison_V2;
-
-namespace ExportOverDueFileUploader.DBmodels;
+﻿namespace ExportOverDueFileUploader.DBmodels;
 
 public partial class RequestStatus
 {
@@ -39,6 +35,7 @@ public partial class RequestStatus
     public virtual ICollection<FileType> FileTypes { get; set; } = new List<FileType>();
 
     public virtual ICollection<GdFiLink> GdFiLinks { get; set; } = new List<GdFiLink>();
+    public virtual IEnumerable<GD_FI_Link> GD_FI_Links { get; set; } = new List<GD_FI_Link>();
 
     public virtual Module? Module { get; set; }
 }

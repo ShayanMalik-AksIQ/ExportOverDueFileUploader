@@ -75,6 +75,7 @@ public partial class ExportOverDueContext : DbContext
         modelBuilder.Entity<ComparisonResultExport>(entity =>
         {
             entity.HasOne(ar => ar.Gd_Fi_Link).WithMany(fi => fi.ComparisonResultExports);
+
             entity.ToTable("ComparisonResultExports");
         });
         modelBuilder.Entity<ComparisonResultImport>(entity =>

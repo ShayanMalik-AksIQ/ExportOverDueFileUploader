@@ -657,7 +657,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             FiId = fi.Id,
                             CreationTime = DateTime.Now,
                             IsDeleted = false,
-                            RequestStatusId = 12,
+                            RequestStatusId = AppSettings.GdFiLinkReqStats,
                             TenantId = AppSettings.TenantId
                         });
                     }
@@ -787,7 +787,8 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             FiId = fi.Id,
                             CreationTime = DateTime.UtcNow,
                             IsDeleted = false,
-                            TenantId = AppSettings.TenantId
+                            TenantId = AppSettings.TenantId,
+                            RequestStatusId = AppSettings.GdFiLinkReqStats
                         });
                     }
                 }
@@ -903,7 +904,7 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             FiId = fi.Id,
                             CreationTime = DateTime.Now,
                             IsDeleted = false,
-                            RequestStatusId = 12,
+                            RequestStatusId = AppSettings.GdFiLinkReqStats,
                             TenantId = AppSettings.TenantId
                         });
                     }
@@ -1022,7 +1023,9 @@ namespace ExportOverDueFileUploader.MatuirtyBO
                             FiId = fi.Id,
                             CreationTime = DateTime.Now,
                             IsDeleted = false,
-                            TenantId = AppSettings.TenantId
+                            TenantId = AppSettings.TenantId,
+                            RequestStatusId = AppSettings.GdFiLinkReqStats
+
                         });
                     }
                 }

@@ -137,12 +137,13 @@ namespace ExportOverDueFileUploader.DataImporter
                 {
                     try
                     {
-                        string format = "dd-MMM-yy";
-                        CultureInfo provider = CultureInfo.InvariantCulture;
+                        //string format = "dd-MMM-yy";
+                        //CultureInfo provider = CultureInfo.InvariantCulture;
 
-                        DateTime result = DateTime.ParseExact(_row["TransmissionDate"].ToString(), format, provider);
-                        _row["TransmissionDate"] = result;
+                        //DateTime result = DateTime.ParseExact(_row["TransmissionDate"].ToString(), format, provider);
+                        //_row["TransmissionDate"] = result;
 
+                        _row["TransmissionDate"] = null;
                     }
                     catch
                     {
